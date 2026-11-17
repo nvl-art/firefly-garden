@@ -1,0 +1,1617 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lumo Firefly Garden</title>
+<style>
+  :root {
+    --purple: #6d4aff;
+    --bg1: #0d0a18;
+    --bg2: #1a1230;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; overflow: hidden; }
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: radial-gradient(ellipse at 50% 80%, var(--bg2), var(--bg1) 70%);
+    color: #e8e2fa;
+    cursor: crosshair;
+    touch-action: none;
+  }
+  canvas { display: block; }
+  .hud {
+    position: fixed;
+    top: 18px;
+    left: 0;
+    right: 0;
+    text-align: center;
+    pointer-events: none;
+    z-index: 5;
+  }
+  .hud .count {
+    font-size: 42px;
+    font-weight: 300;
+    letter-spacing: 2px;
+    color: #fff;
+    text-shadow: 0 0 18px rgba(109,74,255,.8);
+  }
+  .hud .label {
+    font-size: 12px;
+    color: #8f83bd;
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    margin-top: 2px;
+  }
+  .hud .best {
+    font-size: 11px;
+    color: #d8a5ff;
+    letter-spacing: 1px;
+    margin-top: 4px;
+  }
+  .hud .timer {
+    font-size: 12px;
+    color: #8f83bd;
+    margin-top: 6px;
+    letter-spacing: 1px;
+  }
+  .hud .timer.warn { color: #d8a5ff; }
+  .badges {
+    margin-top: 8px;
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    min-height: 26px;
+  }
+  .badge {
+    font-size: 11px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: rgba(109,74,255,.3);
+    border: 1px solid rgba(109,74,255,.6);
+    color: #fff;
+  }
+  .badge.gold { background: rgba(255,196,60,.25); border-color: rgba(255,196,60,.7); }
+
+  @media (min-width: 900px) {
+    .hud {
+      top: 20px;
+      left: 24px;
+      right: auto;
+      text-align: left;
+    }
+    .hud .count { font-size: 54px; }
+    .badges { justify-content: flex-start; }
+  }
+
+  .fps {
+    position: fixed;
+    top: 16px;
+    left: 16px;
+    z-index: 20;
+    background: rgba(26,19,44,.75);
+    border: 1px solid rgba(109,74,255,.45);
+    border-radius: 10px;
+    padding: 7px 12px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #b7a9ea;
+    backdrop-filter: blur(6px);
+    pointer-events: none;
+    min-width: 88px;
+    text-align: center;
+  }
+  .fps b { color: #fff; font-size: 16px; }
+  .fps.good b { color: #7deda4; }
+  .fps.ok b { color: #ffe08a; }
+  .fps.bad b { color: #ff8a8a; }
+
+  @media (min-width: 900px) {
+    .fps { left: auto; right: 76px; top: 20px; }
+  }
+
+  .gear-btn {
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    z-index: 20;
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    border: 1px solid rgba(109,74,255,.5);
+    background: rgba(109,74,255,.18);
+    color: #e8e2fa;
+    font-size: 21px;
+    cursor: pointer;
+    backdrop-filter: blur(6px);
+    transition: transform .3s, background .2s;
+  }
+  .gear-btn:hover { background: rgba(109,74,255,.4); }
+  .gear-btn.spin { transform: rotate(120deg); }
+  @media (min-width: 900px) {
+    .gear-btn { top: 18px; }
+  }
+
+  .settings {
+    position: fixed;
+    top: 70px;
+    right: 16px;
+    width: 280px;
+    max-height: calc(100vh - 100px);
+    overflow-y: auto;
+    background: rgba(26,19,44,.92);
+    border: 1px solid rgba(109,74,255,.45);
+    border-radius: 16px;
+    padding: 18px;
+    z-index: 20;
+    backdrop-filter: blur(12px);
+    box-shadow: 0 12px 40px rgba(0,0,0,.55);
+    opacity: 0;
+    transform: translateY(-8px);
+    pointer-events: none;
+    transition: opacity .25s, transform .25s;
+  }
+  .settings.open { opacity: 1; transform: translateY(0); pointer-events: auto; }
+  .settings h2 { font-size: 15px; margin-bottom: 14px; color: #fff; }
+  .set-group { margin-bottom: 16px; }
+  .set-group label.set-title {
+    display: block;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: #8f83bd;
+    margin-bottom: 8px;
+  }
+  .theme-row { display: flex; flex-wrap: wrap; gap: 7px; }
+  .swatch {
+    width: 40px;
+    height: 30px;
+    border-radius: 8px;
+    border: 2px solid transparent;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9px;
+    font-weight: 700;
+    color: rgba(255,255,255,.85);
+    text-shadow: 0 1px 2px rgba(0,0,0,.6);
+  }
+  .swatch.active { border-color: #fff; }
+  .season-row { display: flex; flex-wrap: wrap; gap: 7px; }
+  .season-btn {
+    padding: 7px 12px;
+    border-radius: 999px;
+    border: 1px solid #38304e;
+    background: transparent;
+    color: #b7a9ea;
+    font-size: 12px;
+    cursor: pointer;
+  }
+  .season-btn.active { border-color: #fff; color: #fff; background: rgba(109,74,255,.3); }
+  .picker-row { display: flex; align-items: center; gap: 10px; margin-top: 9px; }
+  .picker-row input[type=color] {
+    width: 40px; height: 30px;
+    border: none; border-radius: 8px;
+    background: none; cursor: pointer; padding: 0;
+  }
+  .picker-row span { font-size: 12px; color: #b7a9ea; }
+  .slider-row { margin-bottom: 12px; }
+  .slider-row label {
+    display: flex; justify-content: space-between;
+    font-size: 12px; color: #b7a9ea; margin-bottom: 5px;
+  }
+  .slider-row label b { color: #fff; font-weight: 600; }
+  .slider-row input[type=range] { width: 100%; accent-color: var(--purple); cursor: pointer; }
+  .toggle-row {
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 12px; color: #b7a9ea; margin-bottom: 12px;
+  }
+  .toggle-row .switch {
+    width: 42px; height: 22px; border-radius: 999px;
+    background: #38304e; position: relative; cursor: pointer;
+    transition: background .2s;
+    flex-shrink: 0;
+  }
+  .toggle-row .switch::after {
+    content: "";
+    position: absolute; top: 3px; left: 3px;
+    width: 16px; height: 16px; border-radius: 50%;
+    background: #8f83bd;
+    transition: left .2s, background .2s;
+  }
+  .toggle-row .switch.on { background: rgba(109,74,255,.55); }
+  .toggle-row .switch.on::after { left: 23px; background: #fff; }
+  .lowpow-note {
+    font-size: 10px;
+    color: #6f6396;
+    margin: -8px 0 12px;
+    line-height: 1.4;
+  }
+  .reset-btn {
+    width: 100%;
+    padding: 9px;
+    border-radius: 10px;
+    border: 1px solid #38304e;
+    background: transparent;
+    color: #8f83bd;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all .2s;
+  }
+  .reset-btn:hover { color: #fff; border-color: var(--purple); }
+
+  .toast {
+    position: fixed;
+    bottom: 84px;
+    left: 0; right: 0;
+    text-align: center;
+    font-size: 14px;
+    color: #b7a9ea;
+    opacity: 0;
+    transition: opacity .8s;
+    pointer-events: none;
+    z-index: 5;
+  }
+  .toast.show { opacity: 1; }
+  .controls {
+    position: fixed;
+    bottom: 20px;
+    left: 0; right: 0;
+    text-align: center;
+    z-index: 5;
+  }
+  .controls button {
+    background: rgba(109,74,255,.15);
+    color: #cfc4f5;
+    border: 1px solid rgba(109,74,255,.4);
+    border-radius: 999px;
+    padding: 9px 22px;
+    font-size: 13px;
+    cursor: pointer;
+    margin: 0 5px;
+    transition: background .2s, color .2s;
+    backdrop-filter: blur(6px);
+  }
+  .controls button:hover { background: rgba(109,74,255,.35); color: #fff; }
+
+  .kbd-hint {
+    position: fixed;
+    bottom: 20px;
+    right: 24px;
+    font-size: 11px;
+    color: #55497a;
+    z-index: 5;
+    pointer-events: none;
+    display: none;
+  }
+  @media (min-width: 900px) and (pointer: fine) {
+    .kbd-hint { display: block; }
+  }
+  .kbd-hint kbd {
+    background: rgba(109,74,255,.15);
+    border: 1px solid rgba(109,74,255,.4);
+    border-radius: 5px;
+    padding: 1px 6px;
+    font-family: inherit;
+    font-size: 10px;
+    color: #b7a9ea;
+    margin: 0 2px;
+  }
+</style>
+</head>
+<body>
+<div class="fps ok" id="fpsBox"><b>--</b> fps</div>
+<button class="gear-btn" id="gearBtn" aria-label="Settings">⚙️</button>
+<div class="settings" id="settingsPanel">
+  <h2>Settings</h2>
+
+  <div class="set-group">
+    <label class="set-title">Performance</label>
+    <div class="toggle-row" style="margin-bottom:6px;">
+      <span>🔋 Low-power mode</span>
+      <div class="switch" id="lowPowSwitch"></div>
+    </div>
+    <div class="lowpow-note">Caps FPS at 30, dims effects, trims particles. For older phones.</div>
+  </div>
+
+  <div class="set-group">
+    <label class="set-title">Firefly colors</label>
+    <div class="theme-row" id="themeRow"></div>
+    <div class="picker-row">
+      <input type="color" id="customColor" value="#ffd166">
+      <span>Custom color…</span>
+    </div>
+  </div>
+
+  <div class="set-group">
+    <label class="set-title">Season</label>
+    <div class="season-row" id="seasonRow"></div>
+  </div>
+
+  <div class="slider-row">
+    <label>Drift speed <b><span id="speedVal">1.0</span>×</b></label>
+    <input type="range" id="speedSlider" min="0.3" max="3" step="0.1" value="1">
+  </div>
+  <div class="slider-row">
+    <label>Firefly size <b><span id="sizeVal">1.0</span>×</b></label>
+    <input type="range" id="sizeSlider" min="0.5" max="2.5" step="0.1" value="1">
+  </div>
+  <div class="slider-row">
+    <label>Glow intensity <b><span id="glowVal">1.0</span>×</b></label>
+    <input type="range" id="glowSlider" min="0.2" max="2" step="0.1" value="1">
+  </div>
+  <div class="slider-row">
+    <label>Swarm size <b><span id="popVal">20</span></b></label>
+    <input type="range" id="popSlider" min="6" max="50" step="1" value="20">
+  </div>
+
+  <div class="toggle-row">
+    <span>Wind drift (waves get harder)</span>
+    <div class="switch on" id="driftSwitch"></div>
+  </div>
+  <div class="toggle-row">
+    <span>Power-up drops</span>
+    <div class="switch on" id="puSwitch"></div>
+  </div>
+  <div class="toggle-row">
+    <span>Sound</span>
+    <div class="switch on" id="soundSwitch"></div>
+  </div>
+
+  <button class="reset-btn" id="resetBtn">↺ Reset to defaults</button>
+</div>
+
+<div class="hud">
+  <div class="count" id="count">0</div>
+  <div class="label">fireflies caught</div>
+  <div class="best" id="best"></div>
+  <div class="timer" id="timer">next drift in 10s</div>
+  <div class="badges" id="badges"></div>
+</div>
+<div class="toast" id="toast"></div>
+<div class="controls">
+  <button id="moreBtn">✨ Release 10 more</button>
+</div>
+<div class="kbd-hint"><kbd>S</kbd> settings · <kbd>P</kbd> pause · <kbd>M</kbd> mute</div>
+
+<script>
+(function () {
+  "use strict";
+
+  const IS_DESKTOP = window.matchMedia("(min-width: 900px) and (pointer: fine)").matches;
+
+  const canvas = document.createElement("canvas");
+  document.body.appendChild(canvas);
+  const ctx = canvas.getContext("2d", { alpha: false });
+  let W = 0, H = 0, DPR = 1;
+
+  function resize() {
+    const cap = settings.lowPower ? 1 : (IS_DESKTOP ? 2 : 1.5);
+    DPR = Math.min(cap, window.devicePixelRatio || 1);
+    W = window.innerWidth;
+    H = window.innerHeight;
+    canvas.width = Math.floor(W * DPR);
+    canvas.height = Math.floor(H * DPR);
+    canvas.style.width = W + "px";
+    canvas.style.height = H + "px";
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  }
+  window.addEventListener("resize", resize);
+
+  // ---- settings ----
+  const THEMES = {
+    classic: { name: "Gold",  colors: [45, 55, 65, 72] },
+    purple:  { name: "Purple", colors: [260, 272, 285, 295] },
+    aurora:  { name: "Aurora", colors: [140, 165, 185, 205] },
+    candy:   { name: "Candy", colors: [315, 330, 345, 355] },
+    ember:   { name: "Ember", colors: [8, 20, 32, 42] },
+    ice:     { name: "Ice",   colors: [190, 200, 210, 220] },
+    rainbow: { name: "Rainbow", colors: [0, 45, 90, 140, 180, 225, 270, 320] }
+  };
+
+  const SEASONS = {
+    night: { name: "🌙 Night", bg: "#141021" },
+    snow:  { name: "❄️ Snow",  bg: "#171d2e" },
+    ocean: { name: "🌊 Ocean", bg: "#081226" },
+    void_: { name: "🌌 Void",  bg: "#060310" }
+  };
+
+  const DEFAULTS = {
+    theme: "classic",   // gold default
+    customColor: null,
+    season: "night",
+    speedMult: 1,
+    sizeMult: 1,
+    glowMult: 1,
+    popTarget: 20,
+    driftOn: true,
+    powerUpsOn: true,
+    soundOn: true,
+    lowPower: false
+  };
+  const settings = Object.assign({}, DEFAULTS);
+
+  // ---- high score (guarded) ----
+  const HS_KEY = "lumo_firefly_best";
+  let best = 0;
+  try { best = parseInt(localStorage.getItem(HS_KEY) || "0", 10) || 0; } catch (e) {}
+  const bestEl = document.getElementById("best");
+  function updateBestUI() {
+    bestEl.textContent = best > 0 ? "best: " + best : "";
+  }
+  updateBestUI();
+
+  // ---- glow sprites ----
+  const spriteCache = new Map();
+  const SPRITE_BASE = 128;
+
+  function hueToRgb(h) {
+    const c = h / 60;
+    const x = 1 - Math.abs((c % 2) - 1);
+    let r = 0, g = 0, b = 0;
+    if (c < 1) { r = 1; g = x; }
+    else if (c < 2) { r = x; g = 1; }
+    else if (c < 3) { g = 1; b = x; }
+    else if (c < 4) { g = x; b = 1; }
+    else if (c < 5) { r = x; b = 1; }
+    else { r = 1; b = x; }
+    return [r * 255, g * 255, b * 255];
+  }
+
+  function getSprite(hue, golden) {
+    const key = (golden ? "G" : "") + (Math.round(hue / 6) * 6);
+    let entry = spriteCache.get(key);
+    if (entry) return entry;
+
+    const effHue = golden ? 46 : ((Math.round(hue / 6) * 6 % 360) + 360) % 360;
+    const [rr, gg, bb] = hueToRgb(effHue);
+    const rgb = `${rr},${gg},${bb}`;
+    const c = document.createElement("canvas");
+    c.width = c.height = SPRITE_BASE;
+    const g = c.getContext("2d");
+
+    const grad = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+    grad.addColorStop(0, `rgba(${rgb},${golden ? 0.8 : 0.55})`);
+    grad.addColorStop(0.35, `rgba(${rgb},${golden ? 0.35 : 0.22})`);
+    grad.addColorStop(1, `rgba(${rgb},0)`);
+    g.fillStyle = grad;
+    g.fillRect(0, 0, 128, 128);
+
+    const coreR = golden ? 18 : 14;
+    const core = g.createRadialGradient(64, 64, 0, 64, 64, coreR);
+    core.addColorStop(0, "rgba(255,255,255,0.98)");
+    core.addColorStop(0.4, `rgba(${rgb},0.9)`);
+    core.addColorStop(1, `rgba(${rgb},0)`);
+    g.fillStyle = core;
+    g.beginPath();
+    g.arc(64, 64, coreR, 0, Math.PI * 2);
+    g.fill();
+
+    entry = c;
+    spriteCache.set(key, entry);
+    return entry;
+  }
+
+  function getPUSprite(colorIdx) {
+    const key = "PU" + colorIdx;
+    let entry = spriteCache.get(key);
+    if (entry) return entry;
+    const HUES = [195, 330, 110];
+    const [rr, gg, bb] = hueToRgb(HUES[colorIdx % 3]);
+    const c = document.createElement("canvas");
+    c.width = c.height = 96;
+    const g = c.getContext("2d");
+    const grad = g.createRadialGradient(48, 48, 0, 48, 48, 48);
+    grad.addColorStop(0, `rgba(${rr},${gg},${bb},0.55)`);
+    grad.addColorStop(1, `rgba(${rr},${gg},${bb},0)`);
+    g.fillStyle = grad;
+    g.fillRect(0, 0, 96, 96);
+    g.strokeStyle = "rgba(255,255,255,0.8)";
+    g.lineWidth = 2;
+    g.beginPath();
+    g.arc(48, 48, 22, 0, Math.PI * 2);
+    g.stroke();
+    entry = c;
+    spriteCache.set(key, entry);
+    return entry;
+  }
+
+  function getBeamSprite() {
+    let entry = spriteCache.get("BEAM");
+    if (entry) return entry;
+    const c = document.createElement("canvas");
+    c.width = c.height = 256;
+    const g = c.getContext("2d");
+    const grad = g.createRadialGradient(128, 128, 0, 128, 128, 128);
+    grad.addColorStop(0, "rgba(255,138,176,0.25)");
+    grad.addColorStop(0.5, "rgba(255,138,176,0.08)");
+    grad.addColorStop(1, "rgba(255,138,176,0)");
+    g.fillStyle = grad;
+    g.fillRect(0, 0, 256, 256);
+    g.strokeStyle = "rgba(255,190,215,0.5)";
+    g.lineWidth = 2;
+    for (let r = 30; r <= 120; r += 30) {
+      g.beginPath();
+      g.arc(128, 128, r, 0, Math.PI * 2);
+      g.stroke();
+    }
+    entry = c;
+    spriteCache.set("BEAM", entry);
+    return entry;
+  }
+
+  let colorVersion = 0;
+  const THEME_KEYS = Object.keys(THEMES);
+
+  function computeHue(f) {
+    if (f.golden) return 46;
+    if (settings.customColor) {
+      const n = parseInt(settings.customColor.slice(1), 16);
+      const r8 = (n >> 16) & 255, g8 = (n >> 8) & 255, b8 = n & 255;
+      const mx = Math.max(r8, g8, b8), mn = Math.min(r8, g8, b8);
+      let h = 0;
+      if (mx !== mn) {
+        const d = mx - mn;
+        if (mx === r8) h = ((g8 - b8) / d) % 6;
+        else if (mx === g8) h = (b8 - r8) / d + 2;
+        else h = (r8 - g8) / d + 4;
+        h = ((h * 60) + 360) % 360;
+      }
+      return h + (((f.hue % 30) - 15));
+    }
+    const palette = THEMES[settings.theme].colors;
+    return palette[f.hueIdx % palette.length];
+  }
+
+  function flyHue(f) {
+    if (f.colorV !== colorVersion) {
+      f.cachedHue = computeHue(f);
+      f.colorV = colorVersion;
+    }
+    return f.cachedHue;
+  }
+
+  // ---- firefly state ----
+  const fireflies = [];
+  const MAX_FLY = 60;
+  let caught = 0;
+  let comboCount = 0;
+  let comboTimer = null;
+
+  function makeFly() {
+    return {
+      x: Math.random() * W,
+      y: Math.random() * H,
+      vx: (Math.random() - 0.5) * 18,
+      vy: (Math.random() - 0.5) * 18,
+      phase: Math.random() * Math.PI * 2,
+      blinkSpeed: 0.6 + Math.random() * 1.2,
+      size: 4 + Math.random() * 5,
+      hue: 45 + Math.random() * 30,
+      hueIdx: Math.floor(Math.random() * 6),
+      pulse: Math.random() * Math.PI * 2,
+      r: 9 + Math.random() * 6,
+      cachedHue: 45,
+      colorV: -1,
+      golden: false,
+      bornAt: performance.now()
+    };
+  }
+
+  function spawn(n) {
+    for (let i = 0; i < n; i++) {
+      if (fireflies.length >= MAX_FLY) break;
+      fireflies.push(makeFly());
+    }
+  }
+
+  function syncPopulation() {
+    if (fireflies.length < settings.popTarget) {
+      spawn(settings.popTarget - fireflies.length);
+    } else if (fireflies.length > settings.popTarget) {
+      fireflies.length = settings.popTarget;
+    }
+  }
+
+  function wander(f, dt, t, m, magnetOn) {
+    const mm = f.golden ? Math.max(1.6, m) : m;
+    f.vx += Math.sin(t * 0.0004 + f.phase) * 6 * dt * mm;
+    f.vy += Math.cos(t * 0.0005 + f.phase * 1.7) * 6 * dt * mm;
+
+    if (magnetOn) {
+      const cx = W / 2, cy = H / 2;
+      const dx = cx - f.x, dy = cy - f.y;
+      const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+      const pull = Math.min(dist / 10, 60);
+      f.vx += (dx / dist) * pull * dt;
+      f.vy += (dy / dist) * pull * dt;
+      f.vx *= 0.985;
+      f.vy *= 0.985;
+    }
+
+    const margin = 40;
+    if (f.x < margin) f.vx += 25 * dt;
+    if (f.x > W - margin) f.vx -= 25 * dt;
+    if (f.y < margin) f.vy += 25 * dt;
+    if (f.y > H - margin) f.vy -= 25 * dt;
+    const sp = Math.hypot(f.vx, f.vy);
+    const maxSp = magnetOn ? 70 : 34 * mm * (f.golden ? 1.7 : 1);
+    if (sp > maxSp) { f.vx *= maxSp / sp; f.vy *= maxSp / sp; }
+  }
+
+  // ---- golden fireflies ----
+  const GOLD_LIFETIME = 7000;
+  let nextGoldChance = 18000;
+
+  function maybeSpawnGolden(dt) {
+    nextGoldChance -= dt * 1000;
+    if (nextGoldChance <= 0) {
+      nextGoldChance = 14000 + Math.random() * 14000;
+      let hasGolden = false;
+      for (let i = 0; i < fireflies.length; i++) if (fireflies[i].golden) { hasGolden = true; break; }
+      if (!hasGolden && fireflies.length < MAX_FLY) {
+        const g = makeFly();
+        g.golden = true;
+        g.size = 8 + Math.random() * 3;
+        g.r = 12;
+        g.blinkSpeed = 2.2;
+        g.vx = (Math.random() - 0.5) * 40;
+        g.vy = (Math.random() - 0.5) * 40;
+        fireflies.push(g);
+        showToast("⭐ a GOLDEN firefly appeared! (worth 10 — quick!)");
+        chime(1.5);
+      }
+    }
+  }
+
+  // ---- power-ups ----
+  const PU_TYPES = [
+    { id: "freeze", label: "❄", name: "Freeze", colorIdx: 0, dur: 5 },
+    { id: "magnet", label: "🧲", name: "Magnet", colorIdx: 1, dur: 8 },
+    { id: "double", label: "×2", name: "Double", colorIdx: 2, dur: 10 }
+  ];
+  const pickups = [];
+  const effects = { freeze: 0, magnet: 0, double: 0 };
+  let nextPU = 9000;
+
+  function maybeSpawnPickup(dt) {
+    if (!settings.powerUpsOn) return;
+    nextPU -= dt * 1000;
+    if (nextPU <= 0) {
+      nextPU = 13000 + Math.random() * 9000;
+      if (pickups.length < 2) {
+        const t = PU_TYPES[Math.floor(Math.random() * PU_TYPES.length)];
+        pickups.push({
+          type: t,
+          x: 60 + Math.random() * Math.max(60, W - 120),
+          y: 120 + Math.random() * Math.max(60, H - 220),
+          bob: Math.random() * Math.PI * 2
+        });
+        showToast(t.label + " " + t.name + " power-up dropped — grab it!");
+      }
+    }
+  }
+
+  function catchPickup(p) {
+    const t = p.type;
+    effects[t.id] = t.dur;
+    if (t.id === "magnet") {
+      showToast("🧲 MAGNET! The swarm gathers to the center…");
+    } else {
+      showToast(t.label + " " + t.name.toUpperCase() + " activated for " + t.dur + "s!");
+    }
+    chime(t.id === "double" ? 1.6 : 1.3);
+    const hue = t.colorIdx === 0 ? 195 : t.colorIdx === 1 ? 330 : 110;
+    for (let i = 0; i < 16; i++) {
+      if (sparks.length >= SPARK_POOL) break;
+      const a = Math.random() * Math.PI * 2;
+      const sp = 40 + Math.random() * 80;
+      sparks.push({
+        x: p.x, y: p.y,
+        vx: Math.cos(a) * sp, vy: Math.sin(a) * sp,
+        life: 1, hue,
+        size: 2 + Math.random() * 2
+      });
+    }
+  }
+
+  const badgesEl = document.getElementById("badges");
+  let badgesAccum = 0;
+  function updateBadges(dt) {
+    badgesAccum += dt;
+    if (badgesAccum < 0.25) return;
+    badgesAccum = 0;
+    let html = "";
+    for (let i = 0; i < PU_TYPES.length; i++) {
+      const t = PU_TYPES[i];
+      if (effects[t.id] > 0) {
+        html += '<span class="badge">' + t.label + " " + t.name + " " + Math.ceil(effects[t.id]) + "s</span>";
+      }
+    }
+    if (goldAlive) html += '<span class="badge gold">⭐ golden loose!</span>';
+    if (badgesEl.innerHTML !== html) badgesEl.innerHTML = html;
+  }
+
+  // ---- season background (sprite-stamped, particle counts adapt to low-power) ----
+  let bgParticles = [];
+  function bgMax() {
+    return settings.lowPower
+      ? { snow: 30, ocean: 20, void_: 40 }
+      : { snow: 55, ocean: 36, void_: 70 };
+  }
+
+  function buildSeasonBG() {
+    bgParticles = [];
+    const caps = bgMax();
+    if (settings.season === "snow") {
+      for (let i = 0; i < caps.snow; i++) {
+        bgParticles.push({
+          x: Math.random() * W, y: Math.random() * H,
+          vy: 14 + Math.random() * 26,
+          vx: (Math.random() - 0.5) * 12,
+          size: 1.5 + Math.random() * 2.5,
+          sway: Math.random() * Math.PI * 2
+        });
+      }
+    } else if (settings.season === "ocean") {
+      for (let i = 0; i < caps.ocean; i++) {
+        bgParticles.push({
+          x: Math.random() * W, y: Math.random() * H,
+          vy: -(8 + Math.random() * 18),
+          size: 3 + Math.random() * 4,
+          sway: Math.random() * Math.PI * 2
+        });
+      }
+    } else if (settings.season === "void_") {
+      for (let i = 0; i < caps.void_; i++) {
+        bgParticles.push({
+          x: Math.random() * W, y: Math.random() * H,
+          size: 1 + Math.random() * 2,
+          tw: Math.random() * Math.PI * 2,
+          twSpeed: 0.5 + Math.random() * 2
+        });
+      }
+    }
+  }
+
+  function getSnowSprite(sizeTier) {
+    const key = "SNOW" + sizeTier;
+    let entry = spriteCache.get(key);
+    if (entry) return entry;
+    const S = 24;
+    const c = document.createElement("canvas");
+    c.width = c.height = S;
+    const g = c.getContext("2d");
+    const grad = g.createRadialGradient(S / 2, S / 2, 0, S / 2, S / 2, S / 2);
+    grad.addColorStop(0, "rgba(235,242,255,0.9)");
+    grad.addColorStop(1, "rgba(235,242,255,0)");
+    g.fillStyle = grad;
+    g.fillRect(0, 0, S, S);
+    entry = { img: c, size: S };
+    spriteCache.set(key, entry);
+    return entry;
+  }
+
+  function getBubbleSprite(sizeTier) {
+    const key = "BUB" + sizeTier;
+    let entry = spriteCache.get(key);
+    if (entry) return entry;
+    const S = 32;
+    const c = document.createElement("canvas");
+    c.width = c.height = S;
+    const g = c.getContext("2d");
+    g.strokeStyle = "rgba(150,205,255,0.5)";
+    g.lineWidth = 1.5;
+    g.beginPath();
+    g.arc(S / 2, S / 2, S / 2 - 3, 0, Math.PI * 2);
+    g.stroke();
+    g.fillStyle = "rgba(150,205,255,0.12)";
+    g.beginPath();
+    g.arc(S / 2, S / 2, S / 2 - 3, 0, Math.PI * 2);
+    g.fill();
+    entry = { img: c, size: S };
+    spriteCache.set(key, entry);
+    return entry;
+  }
+
+  function drawSeasonBG(dt) {
+    const season = settings.season;
+    if (season === "snow") {
+      for (let i = 0; i < bgParticles.length; i++) {
+        const p = bgParticles[i];
+        p.sway += dt;
+        p.y += p.vy * dt;
+        p.x += (p.vx + Math.sin(p.sway) * 10) * dt;
+        if (p.y > H + 8) { p.y = -8; p.x = Math.random() * W; }
+        if (p.x > W + 8) p.x = -8; else if (p.x < -8) p.x = W + 8;
+        const tier = p.size > 3 ? 1 : 0;
+        const spr = getSnowSprite(tier);
+        const s = spr.size * (0.5 + p.size / 8);
+        ctx.drawImage(spr.img, p.x - s / 2, p.y - s / 2, s, s);
+      }
+    } else if (season === "ocean") {
+      for (let i = 0; i < bgParticles.length; i++) {
+        const p = bgParticles[i];
+        p.sway += dt * 2;
+        p.y += p.vy * dt;
+        p.x += Math.sin(p.sway) * 8 * dt;
+        if (p.y < -12) { p.y = H + 12; p.x = Math.random() * W; }
+        const tier = p.size > 5 ? 1 : 0;
+        const spr = getBubbleSprite(tier);
+        const s = spr.size * (0.5 + p.size / 12);
+        ctx.drawImage(spr.img, p.x - s / 2, p.y - s / 2, s, s);
+      }
+    } else if (season === "void_") {
+      ctx.fillStyle = "rgba(255,255,255,0.18)";
+      for (let i = 0; i < bgParticles.length; i++) {
+        const p = bgParticles[i];
+        if (p.size <= 1.4) ctx.fillRect(p.x, p.y, p.size, p.size);
+      }
+      ctx.fillStyle = "rgba(255,255,255,0.38)";
+      for (let i = 0; i < bgParticles.length; i++) {
+        const p = bgParticles[i];
+        if (p.size > 1.4 && p.size <= 2.2) ctx.fillRect(p.x, p.y, p.size, p.size);
+      }
+      ctx.fillStyle = "rgba(255,255,255,0.6)";
+      for (let i = 0; i < bgParticles.length; i++) {
+        const p = bgParticles[i];
+        if (p.size > 2.2) ctx.fillRect(p.x, p.y, p.size, p.size);
+      }
+    }
+  }
+
+  // ---- audio ----
+  let actx = null;
+  const SCALE = [0, 3, 5, 7, 10, 12, 15];
+  let lastNote = 3;
+
+  function ensureAudio() {
+    if (!actx) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return null;
+      actx = new AC();
+    }
+    if (actx.state === "suspended") actx.resume();
+    return actx;
+  }
+
+  function chime(intensity) {
+    if (!settings.soundOn) return;
+    const a = ensureAudio();
+    if (!a) return;
+    const now = a.currentTime;
+    let step = Math.min(SCALE.length - 1, Math.max(0, lastNote + (Math.floor(Math.random() * 3) - 1)));
+    lastNote = step;
+    const freq = 440 * Math.pow(2, SCALE[step] / 12);
+    for (let i = 0; i < 2; i++) {
+      const mult = i === 0 ? 1 : 2;
+      const osc = a.createOscillator();
+      const g = a.createGain();
+      osc.type = "sine";
+      osc.frequency.value = freq * mult;
+      const vol = (i === 0 ? 0.16 : 0.06) * intensity;
+      g.gain.setValueAtTime(0.0001, now);
+      g.gain.exponentialRampToValueAtTime(vol, now + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, now + 1.4);
+      osc.connect(g);
+      g.connect(a.destination);
+      osc.start(now);
+      osc.stop(now + 1.5);
+    }
+  }
+
+  function goldChime() {
+    if (!settings.soundOn) return;
+    const a = ensureAudio();
+    if (!a) return;
+    const now = a.currentTime;
+    const freqs = [880, 1108.7, 1318.5];
+    for (let i = 0; i < 3; i++) {
+      const osc = a.createOscillator();
+      const g = a.createGain();
+      osc.type = "sine";
+      osc.frequency.value = freqs[i];
+      const st = now + i * 0.07;
+      g.gain.setValueAtTime(0.0001, st);
+      g.gain.exponentialRampToValueAtTime(0.12, st + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, st + 0.9);
+      osc.connect(g);
+      g.connect(a.destination);
+      osc.start(st);
+      osc.stop(st + 1);
+    }
+  }
+
+  function driftSound() {
+    if (!settings.soundOn) return;
+    const a = ensureAudio();
+    if (!a) return;
+    const now = a.currentTime;
+    const osc = a.createOscillator();
+    const g = a.createGain();
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(320, now);
+    osc.frequency.exponentialRampToValueAtTime(110, now + 0.9);
+    g.gain.setValueAtTime(0.0001, now);
+    g.gain.linearRampToValueAtTime(0.09, now + 0.15);
+    g.gain.exponentialRampToValueAtTime(0.0001, now + 1);
+    osc.connect(g);
+    g.connect(a.destination);
+    osc.start(now); osc.stop(now + 1.05);
+  }
+
+  let lastWhoosh = 0;
+  function whoosh(speed) {
+    if (!settings.soundOn) return;
+    const a = ensureAudio();
+    if (!a) return;
+    const now = a.currentTime;
+    if (now - lastWhoosh < 0.09) return;
+    lastWhoosh = now;
+    const osc = a.createOscillator();
+    const g = a.createGain();
+    const lp = a.createBiquadFilter();
+    lp.type = "lowpass";
+    lp.frequency.value = 900 + Math.min(2500, speed * 6);
+    osc.type = "triangle";
+    osc.frequency.setValueAtTime(120 + Math.min(340, speed * 0.8), now);
+    g.gain.setValueAtTime(0.0001, now);
+    g.gain.linearRampToValueAtTime(Math.min(0.06, speed * 0.0009 + 0.02), now + 0.03);
+    g.gain.exponentialRampToValueAtTime(0.0001, now + 0.22);
+    osc.connect(lp);
+    lp.connect(g);
+    g.connect(a.destination);
+    osc.start(now); osc.stop(now + 0.25);
+  }
+
+  // ---- UI helpers ----
+  const countEl = document.getElementById("count");
+  const toastEl = document.getElementById("toast");
+  const timerEl = document.getElementById("timer");
+  const fpsBox = document.getElementById("fpsBox");
+  const fpsValEl = fpsBox.querySelector("b");
+  let toastTimer = null;
+  let lastToastMsg = "";
+  let lastToastTime = 0;
+
+  function showToast(msg) {
+    const now = performance.now();
+    if (msg === lastToastMsg && now - lastToastTime < 1500) return;
+    lastToastMsg = msg;
+    lastToastTime = now;
+    toastEl.textContent = msg;
+    toastEl.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toastEl.classList.remove("show"), 2200);
+  }
+
+  // ---- gameplay ----
+  let m10 = false, m25 = false, m50 = false;
+
+  function catchRadius() {
+    return effects.magnet > 0 ? 14 * 2.5 : 14;
+  }
+
+  function caughtFly(f) {
+    const wasGolden = f.golden;
+    const base = wasGolden ? 10 : 1;
+    const gained = effects.double > 0 ? base * 2 : base;
+    caught += gained;
+    countEl.textContent = caught;
+
+    if (caught > best) {
+      best = caught;
+      updateBestUI();
+      try { localStorage.setItem(HS_KEY, String(best)); } catch (e) {}
+    }
+
+    if (wasGolden) {
+      goldChime();
+      showToast("⭐ GOLDEN CAUGHT! +" + gained);
+      for (let i = 0; i < 30; i++) {
+        if (sparks.length >= SPARK_POOL) break;
+        const a = Math.random() * Math.PI * 2;
+        const sp = 50 + Math.random() * 140;
+        sparks.push({
+          x: f.x, y: f.y,
+          vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 30,
+          life: 1.2,
+          hue: 40 + Math.random() * 20,
+          size: 2 + Math.random() * 3
+        });
+      }
+    } else {
+      chime(1);
+      burst(f.x, f.y, flyHue(f));
+      comboCount++;
+      clearTimeout(comboTimer);
+      if (comboCount >= 5) {
+        showToast(comboCount + " combo streak!! 🔥 keep swiping");
+        chime(1.4);
+      }
+      comboTimer = setTimeout(() => comboCount = 0, 1200);
+
+      if (caught >= 10 && !m10) { m10 = true; showToast("10! you're getting good at this 🌙"); }
+      if (caught >= 25 && !m25) { m25 = true; showToast("25! the garden loves you ✨"); }
+      if (caught >= 50 && !m50) { m50 = true; showToast("50!! certified firefly whisperer 🏆"); }
+    }
+    syncPopulation();
+  }
+
+  function tryCatch(x, y) {
+    for (let i = pickups.length - 1; i >= 0; i--) {
+      const p = pickups[i];
+      const dx = p.x - x, dy = p.y - y;
+      if (dx * dx + dy * dy <= 22 * 22) {
+        pickups.splice(i, 1);
+        catchPickup(p);
+        return;
+      }
+    }
+    const cr = catchRadius();
+    for (let i = fireflies.length - 1; i >= 0; i--) {
+      const f = fireflies[i];
+      const dx = f.x - x, dy = f.y - y;
+      const rr = (f.golden ? f.r + 4 : f.r) + cr;
+      if (dx * dx + dy * dy <= rr * rr) {
+        fireflies.splice(i, 1);
+        caughtFly(f);
+        return;
+      }
+    }
+    if (settings.soundOn && actx) {
+      const now = actx.currentTime;
+      const osc = actx.createOscillator();
+      const g = actx.createGain();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(180, now);
+      osc.frequency.exponentialRampToValueAtTime(90, now + 0.25);
+      g.gain.setValueAtTime(0.04, now);
+      g.gain.exponentialRampToValueAtTime(0.0001, now + 0.3);
+      osc.connect(g);
+      g.connect(actx.destination);
+      osc.start(now); osc.stop(now + 0.35);
+    }
+  }
+
+  function sweep(x0, y0, x1, y1, speed) {
+    const dx = x1 - x0, dy = y1 - y0;
+    const distSq = dx * dx + dy * dy;
+    if (distSq > 3600) whoosh(speed);
+    const dist = Math.sqrt(distSq);
+    const steps = Math.max(1, Math.ceil(dist / 8));
+    for (let i = pickups.length - 1; i >= 0; i--) {
+      const p = pickups[i];
+      for (let s = 0; s <= steps; s++) {
+        const px = x0 + dx * (s / steps), py = y0 + dy * (s / steps);
+        const pdx = p.x - px, pdy = p.y - py;
+        if (pdx * pdx + pdy * pdy <= 22 * 22) {
+          pickups.splice(i, 1);
+          catchPickup(p);
+          break;
+        }
+      }
+    }
+    const cr = catchRadius();
+    for (let s = 0; s <= steps; s++) {
+      const px = x0 + dx * (s / steps);
+      const py = y0 + dy * (s / steps);
+      for (let i = fireflies.length - 1; i >= 0; i--) {
+        const f = fireflies[i];
+        const fx = f.x - px, fy = f.y - py;
+        const rr = (f.golden ? f.r + 4 : f.r) + cr;
+        if (fx * fx + fy * fy <= rr * rr) {
+          fireflies.splice(i, 1);
+          caughtFly(f);
+        }
+      }
+    }
+  }
+
+  const sparks = [];
+  let SPARK_POOL = 350;
+  function burst(x, y, hue) {
+    for (let i = 0; i < 14; i++) {
+      if (sparks.length >= SPARK_POOL) return;
+      const a = Math.random() * Math.PI * 2;
+      const sp = 30 + Math.random() * 90;
+      sparks.push({
+        x, y,
+        vx: Math.cos(a) * sp,
+        vy: Math.sin(a) * sp - 20,
+        life: 1,
+        hue: hue + (Math.random() * 30 - 15),
+        size: 1.5 + Math.random() * 2.5
+      });
+    }
+  }
+
+  // ---- difficulty waves + drift ----
+  const DRIFT_BASE_INTERVAL = 10;
+  let driftCountdown = DRIFT_BASE_INTERVAL;
+  let wave = 1;
+  let waveElapsed = 0;
+  const WAVE_EVERY = 45;
+
+  function driftAmount() {
+    return Math.min(10 + (wave - 1) * 5, 30);
+  }
+
+  function driftAway() {
+    if (!settings.driftOn) return;
+    let normalCount = 0;
+    for (let i = 0; i < fireflies.length; i++) if (!fireflies[i].golden) normalCount++;
+    const n = Math.min(driftAmount(), normalCount);
+    if (n === 0) {
+      showToast("the garden went quiet… releasing a few more 🕯️");
+      syncPopulation();
+      return;
+    }
+    let removed = 0;
+    for (let i = fireflies.length - 1; i >= 0 && removed < n; i--) {
+      const f = fireflies[i];
+      if (f.golden) continue;
+      fireflies.splice(i, 1);
+      removed++;
+      const hue = flyHue(f);
+      for (let j = 0; j < 4; j++) {
+        if (sparks.length >= SPARK_POOL) break;
+        sparks.push({
+          x: f.x, y: f.y,
+          vx: (Math.random() - 0.5) * 14,
+          vy: -(10 + Math.random() * 22),
+          life: 0.9,
+          hue,
+          size: 1.2 + Math.random() * 1.6
+        });
+      }
+    }
+    driftSound();
+    showToast(removed + " fireflies drifted away… 💨 (wave " + wave + ")");
+    syncPopulation();
+  }
+
+  // ---- swipe trails ----
+  const trail = [];
+  const TRAIL_MAX = 60;
+  let trailHueSeed = 0;
+
+  function pushTrail(x, y) {
+    trailHueSeed += 7;
+    trail.push({ x, y, life: 1, hue: trailHueSeed % 360 });
+    if (trail.length > TRAIL_MAX) trail.shift();
+  }
+
+  function drawTrail(dt) {
+    if (trail.length < 2) return;
+    for (let i = trail.length - 1; i >= 0; i--) {
+      trail[i].life -= dt * 1.6;
+      if (trail[i].life <= 0) trail.splice(i, 1);
+    }
+    for (let i = 1; i < trail.length; i++) {
+      const a = trail[i - 1], b = trail[i];
+      ctx.strokeStyle = "hsla(" + b.hue + ", 95%, 68%, " + (b.life * 0.7) + ")";
+      ctx.lineWidth = 3 * b.life + 0.5;
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y);
+      ctx.lineTo(b.x, b.y);
+      ctx.stroke();
+    }
+  }
+
+  // ---- pointer ----
+  let dragging = false;
+  let lastX = 0, lastY = 0, lastT = 0;
+
+  function pointerDown(x, y) {
+    ensureAudio();
+    dragging = true;
+    lastX = x; lastY = y; lastT = performance.now();
+    tryCatch(x, y);
+    pushTrail(x, y);
+  }
+
+  function pointerMove(x, y) {
+    if (!dragging) return;
+    const now = performance.now();
+    const dt = Math.max(1, now - lastT);
+    const speed = Math.hypot(x - lastX, y - lastY) / dt * 1000;
+    sweep(lastX, lastY, x, y, speed);
+    pushTrail(x, y);
+    if (speed > 150 && sparks.length < SPARK_POOL) {
+      sparks.push({
+        x, y,
+        vx: (Math.random() - 0.5) * 40,
+        vy: (Math.random() - 0.5) * 40 - 10,
+        life: 0.5, hue: 260, size: 1.5
+      });
+    }
+    lastX = x; lastY = y; lastT = now;
+  }
+
+  function pointerUp() { dragging = false; }
+
+  canvas.addEventListener("mousedown", e => pointerDown(e.clientX, e.clientY));
+  canvas.addEventListener("mousemove", e => pointerMove(e.clientX, e.clientY));
+  window.addEventListener("mouseup", pointerUp);
+  canvas.addEventListener("touchstart", e => {
+    const t = e.touches[0];
+    pointerDown(t.clientX, t.clientY);
+  }, { passive: true });
+  canvas.addEventListener("touchmove", e => {
+    e.preventDefault();
+    const t = e.touches[0];
+    pointerMove(t.clientX, t.clientY);
+  }, { passive: false });
+  window.addEventListener("touchend", pointerUp);
+
+  // ---- keyboard (desktop) ----
+  let paused = false;
+  window.addEventListener("keydown", e => {
+    if (e.repeat) return;
+    const k = e.key.toLowerCase();
+    if (k === "s") {
+      panel.classList.toggle("open");
+      gearBtn.classList.toggle("spin");
+    } else if (k === "p") {
+      paused = !paused;
+      showToast(paused ? "paused ⏸ (press P to resume)" : "unpaused ▶");
+    } else if (k === "m") {
+      settings.soundOn = !settings.soundOn;
+      document.getElementById("soundSwitch").classList.toggle("on", settings.soundOn);
+      showToast(settings.soundOn ? "sound on 🔊" : "muted 🔇");
+      if (settings.soundOn) chime(0.7);
+    }
+  });
+
+  // ---- settings UI ----
+  const gearBtn = document.getElementById("gearBtn");
+  const panel = document.getElementById("settingsPanel");
+  gearBtn.addEventListener("click", () => {
+    panel.classList.toggle("open");
+    gearBtn.classList.toggle("spin");
+  });
+
+  const themeRow = document.getElementById("themeRow");
+  const swatchEls = {};
+  THEME_KEYS.forEach(key => {
+    const th = THEMES[key];
+    const sw = document.createElement("div");
+    sw.className = "swatch" + (key === settings.theme ? " active" : "");
+    sw.textContent = th.name;
+    sw.title = th.name;
+    if (key === "rainbow") {
+      sw.style.background = "linear-gradient(135deg, hsl(0,90%,60%), hsl(90,90%,55%), hsl(180,90%,55%), hsl(270,90%,60%), hsl(320,90%,60%))";
+    } else {
+      const mid = th.colors[Math.floor(th.colors.length / 2)];
+      sw.style.background = "linear-gradient(135deg, hsl(" + th.colors[0] + ",95%,60%), hsl(" + mid + ",95%,60%), hsl(" + th.colors[th.colors.length - 1] + ",95%,60%))";
+    }
+    sw.addEventListener("click", () => {
+      settings.theme = key;
+      settings.customColor = null;
+      document.getElementById("customColor").value = "#ffd166";
+      Object.values(swatchEls).forEach(el => el.classList.remove("active"));
+      sw.classList.add("active");
+      colorVersion++;
+      showToast(th.name + " fireflies ✨");
+    });
+    themeRow.appendChild(sw);
+    swatchEls[key] = sw;
+  });
+
+  document.getElementById("customColor").addEventListener("input", e => {
+    settings.customColor = e.target.value;
+    Object.values(swatchEls).forEach(el => el.classList.remove("active"));
+    colorVersion++;
+  });
+
+  const seasonRow = document.getElementById("seasonRow");
+  const seasonEls = {};
+  Object.keys(SEASONS).forEach(key => {
+    const btn = document.createElement("button");
+    btn.className = "season-btn" + (key === settings.season ? " active" : "");
+    btn.textContent = SEASONS[key].name;
+    btn.addEventListener("click", () => {
+      settings.season = key;
+      Object.values(seasonEls).forEach(el => el.classList.remove("active"));
+      btn.classList.add("active");
+      buildSeasonBG();
+      showToast(SEASONS[key].name + " garden 🌍");
+    });
+    seasonRow.appendChild(btn);
+    seasonEls[key] = btn;
+  });
+
+  function bindSlider(id, valId, apply) {
+    const el = document.getElementById(id);
+    const val = document.getElementById(valId);
+    el.addEventListener("input", () => apply(parseFloat(el.value), val));
+  }
+
+  bindSlider("speedSlider", "speedVal", (v, val) => {
+    settings.speedMult = v; val.textContent = v.toFixed(1);
+  });
+  bindSlider("sizeSlider", "sizeVal", (v, val) => {
+    settings.sizeMult = v; val.textContent = v.toFixed(1);
+  });
+  bindSlider("glowSlider", "glowVal", (v, val) => {
+    settings.glowMult = v; val.textContent = v.toFixed(1);
+  });
+  bindSlider("popSlider", "popVal", (v, val) => {
+    settings.popTarget = v; val.textContent = v; syncPopulation();
+  });
+
+  document.getElementById("lowPowSwitch").addEventListener("click", function () {
+    settings.lowPower = !settings.lowPower;
+    this.classList.toggle("on", settings.lowPower);
+    if (settings.lowPower) {
+      SPARK_POOL = 150;
+      if (settings.popTarget > 24) {
+        settings.popTarget = 24;
+        document.getElementById("popSlider").value = 24;
+        document.getElementById("popVal").textContent = 24;
+      }
+      showToast("🔋 low-power mode on — 30fps cap, light effects");
+    } else {
+      SPARK_POOL = 350;
+      showToast("full power mode ⚡");
+    }
+    resize();
+    buildSeasonBG();
+  });
+
+  document.getElementById("driftSwitch").addEventListener("click", function () {
+    settings.driftOn = !settings.driftOn;
+    this.classList.toggle("on", settings.driftOn);
+    if (settings.driftOn) {
+      driftCountdown = DRIFT_BASE_INTERVAL;
+      showToast("wind drift on — keep sweeping! ⏳");
+    } else {
+      showToast("zen mode: no drift 🧘");
+    }
+  });
+
+  document.getElementById("puSwitch").addEventListener("click", function () {
+    settings.powerUpsOn = !settings.powerUpsOn;
+    this.classList.toggle("on", settings.powerUpsOn);
+    if (!settings.powerUpsOn) {
+      pickups.length = 0;
+      effects.freeze = 0; effects.magnet = 0; effects.double = 0;
+      showToast("power-ups off");
+    } else {
+      showToast("power-ups on — watch for drops 🎁");
+    }
+  });
+
+  document.getElementById("soundSwitch").addEventListener("click", function () {
+    settings.soundOn = !settings.soundOn;
+    this.classList.toggle("on", settings.soundOn);
+    if (settings.soundOn) { ensureAudio(); chime(0.7); }
+  });
+
+  document.getElementById("resetBtn").addEventListener("click", () => {
+    Object.assign(settings, DEFAULTS);
+    document.getElementById("speedSlider").value = 1;
+    document.getElementById("sizeSlider").value = 1;
+    document.getElementById("glowSlider").value = 1;
+    document.getElementById("popSlider").value = 20;
+    document.getElementById("speedVal").textContent = "1.0";
+    document.getElementById("sizeVal").textContent = "1.0";
+    document.getElementById("glowVal").textContent = "1.0";
+    document.getElementById("popVal").textContent = "20";
+    document.getElementById("customColor").value = "#ffd166";
+    document.getElementById("driftSwitch").classList.add("on");
+    document.getElementById("puSwitch").classList.add("on");
+    document.getElementById("soundSwitch").classList.add("on");
+    document.getElementById("lowPowSwitch").classList.remove("on");
+    Object.values(swatchEls).forEach(el => el.classList.remove("active"));
+    swatchEls[DEFAULTS.theme].classList.add("active");
+    Object.values(seasonEls).forEach(el => el.classList.remove("active"));
+    seasonEls[DEFAULTS.season].classList.add("active");
+    colorVersion++;
+    SPARK_POOL = 350;
+    resize();
+    buildSeasonBG();
+    pickups.length = 0;
+    effects.freeze = 0; effects.magnet = 0; effects.double = 0;
+    syncPopulation();
+    showToast("back to defaults ↺");
+  });
+
+  document.getElementById("moreBtn").addEventListener("click", () => {
+    ensureAudio();
+    const cap = settings.lowPower ? 24 : MAX_FLY;
+    settings.popTarget = Math.min(cap, settings.popTarget + 10);
+    document.getElementById("popSlider").value = settings.popTarget;
+    document.getElementById("popVal").textContent = settings.popTarget;
+    syncPopulation();
+    showToast("10 more fireflies released 🪄");
+  });
+
+  // ---- render loop ----
+  const FRAME_MIN_LOWPOW = 1000 / 30;
+  let lastTick = performance.now();
+  let timerAccum = 0;
+  let fpsFrames = 0;
+  let fpsStart = performance.now();
+  let goldAlive = false;
+  let rafScheduled = false;
+
+  function scheduleNext() {
+    if (settings.lowPower) {
+      if (!rafScheduled) {
+        rafScheduled = true;
+        setTimeout(() => {
+          rafScheduled = false;
+          requestAnimationFrame(frame);
+        }, FRAME_MIN_LOWPOW);
+      }
+    } else {
+      requestAnimationFrame(frame);
+    }
+  }
+
+  function frame(t) {
+    const dt = Math.min(0.05, (t - lastTick) / 1000);
+    lastTick = t;
+
+    fpsFrames++;
+    const fpsElapsed = t - fpsStart;
+    if (fpsElapsed >= 500) {
+      const fps = Math.round(fpsFrames * 1000 / fpsElapsed);
+      fpsValEl.textContent = fps;
+      fpsBox.classList.remove("good", "ok", "bad");
+      if (fps >= 50) fpsBox.classList.add("good");
+      else if (fps >= 30) fpsBox.classList.add("ok");
+      else fpsBox.classList.add("bad");
+      fpsFrames = 0;
+      fpsStart = t;
+    }
+
+    if (paused) {
+      scheduleNext();
+      return;
+    }
+
+    effects.freeze = Math.max(0, effects.freeze - dt);
+    effects.magnet = Math.max(0, effects.magnet - dt);
+    effects.double = Math.max(0, effects.double - dt);
+    const magnetOn = effects.magnet > 0;
+
+    if (settings.driftOn) {
+      waveElapsed += dt;
+      if (waveElapsed >= WAVE_EVERY) {
+        waveElapsed = 0;
+        wave++;
+        showToast("🌪️ Wave " + wave + "! Winds stronger (lose " + driftAmount() + " per drift)");
+        chime(1.5);
+      }
+      if (effects.freeze <= 0) {
+        driftCountdown -= dt;
+        if (driftCountdown <= 0) {
+          driftCountdown = DRIFT_BASE_INTERVAL;
+          driftAway();
+        }
+      }
+      timerAccum += dt;
+      if (timerAccum > 0.2) {
+        timerAccum = 0;
+        if (effects.freeze > 0) {
+          timerEl.textContent = "❄️ frozen — " + Math.ceil(effects.freeze) + "s";
+          timerEl.classList.add("warn");
+        } else {
+          const secsLeft = Math.ceil(driftCountdown);
+          timerEl.textContent = "wave " + wave + " · next drift in " + secsLeft + "s";
+          timerEl.classList.toggle("warn", secsLeft <= 3);
+        }
+      }
+    } else if (timerEl.textContent.indexOf("zen") === -1) {
+      timerEl.textContent = "zen mode 🧘 no drift";
+      timerEl.classList.remove("warn");
+    }
+
+    maybeSpawnGolden(dt);
+    maybeSpawnPickup(dt);
+
+    goldAlive = false;
+    for (let i = fireflies.length - 1; i >= 0; i--) {
+      const f = fireflies[i];
+      if (f.golden && t - f.bornAt > GOLD_LIFETIME) {
+        fireflies.splice(i, 1);
+        showToast("⭐ the golden one escaped…");
+        driftSound();
+      } else if (f.golden) goldAlive = true;
+    }
+    updateBadges(dt);
+
+    ctx.fillStyle = SEASONS[settings.season].bg;
+    ctx.fillRect(0, 0, W, H);
+    drawSeasonBG(dt);
+
+    if (magnetOn) {
+      const beam = getBeamSprite();
+      const beamSize = Math.max(W, H) * 0.8;
+      const rot = t * 0.0008;
+      ctx.save();
+      ctx.translate(W / 2, H / 2);
+      ctx.rotate(rot);
+      ctx.globalAlpha = Math.min(0.9, effects.magnet);
+      ctx.drawImage(beam, -beamSize / 2, -beamSize / 2, beamSize, beamSize);
+      ctx.restore();
+      ctx.globalAlpha = 1;
+    }
+
+    drawTrail(dt);
+
+    const sm = settings.sizeMult;
+    const gm = settings.lowPower ? Math.min(1, settings.glowMult) : settings.glowMult;
+    const frozen = effects.freeze > 0;
+    const moveMult = frozen ? 0.15 : settings.speedMult;
+
+    for (let i = 0; i < fireflies.length; i++) {
+      const f = fireflies[i];
+      wander(f, dt, t, moveMult, magnetOn);
+      f.x += f.vx * dt;
+      f.y += f.vy * dt;
+      f.pulse += dt;
+
+      const hue = flyHue(f);
+      const sprite = getSprite(hue, f.golden);
+
+      const blink = f.golden
+        ? 0.85 + 0.15 * Math.sin(t * 0.012)
+        : 0.3 + 0.7 * Math.pow(0.5 + 0.5 * Math.sin(t * 0.001 * f.blinkSpeed + f.phase), 2);
+
+      const scale = f.golden ? 1.35 : 1;
+      const drawSize = SPRITE_BASE * 0.75 * sm * scale * (0.7 + 0.3 * blink);
+      const half = drawSize / 2;
+      ctx.globalAlpha = Math.min(1, blink * gm);
+      ctx.drawImage(sprite, f.x - half, f.y - half, drawSize, drawSize);
+    }
+    ctx.globalAlpha = 1;
+
+    for (let i = 0; i < pickups.length; i++) {
+      const p = pickups[i];
+      p.bob += dt * 2;
+      const by = p.y + Math.sin(p.bob) * 5;
+      const puSprite = getPUSprite(p.type.colorIdx);
+      const size = 96 * (0.9 + 0.1 * Math.sin(p.bob * 2));
+      const halfP = size / 2;
+      ctx.globalAlpha = 0.85 + 0.15 * Math.sin(p.bob * 3);
+      ctx.drawImage(puSprite, p.x - halfP, by - halfP, size, size);
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = "rgba(255,255,255,0.95)";
+      ctx.font = "bold 17px 'Segoe UI', sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(p.type.label, p.x, by);
+    }
+
+    for (let i = sparks.length - 1; i >= 0; i--) {
+      const s = sparks[i];
+      s.life -= dt * 1.4;
+      if (s.life <= 0) { sparks[i] = sparks[sparks.length - 1]; sparks.pop(); continue; }
+      s.x += s.vx * dt;
+      s.y += s.vy * dt;
+      s.vy += 60 * dt;
+      const sz = s.size * Math.min(1, s.life) * 2;
+      ctx.globalAlpha = Math.min(1, s.life);
+      ctx.fillStyle = "hsl(" + Math.round(s.hue) + ", 100%, 75%)";
+      ctx.fillRect(s.x - sz / 2, s.y - sz / 2, sz, sz);
+    }
+    ctx.globalAlpha = 1;
+
+    scheduleNext();
+  }
+
+  resize();
+  requestAnimationFrame(frame);
+  spawn(settings.popTarget);
+  buildSeasonBG();
+  showToast(IS_DESKTOP ? "desktop garden loaded 🖥️ (S = settings, P = pause)" : "golden hour, every hour ✨");
+})();
+</script>
+</body>
+</html>
