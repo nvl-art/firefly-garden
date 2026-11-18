@@ -19,7 +19,7 @@ night sky full of glowing fireflies.
 - Sliders for speed, size, glow, and swarm size
 - Difficulty waves, saved best score, combo system
 - 🔋 Low-power mode for older phones
-- Works on phone (touch) and desktop (mouse + keyboard: S = settings, P = pause, M = mute)
+- Works on phone (touch) and desktop (mouse + keyboard: S = settings, P = pause, M = mute) 
 - Fully offline after first load — install it to your home screen!
 
 ## 🚀 Play it
