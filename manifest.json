@@ -1,0 +1,14 @@
+{
+  "name": "Firefly Garden",
+  "short_name": "Fireflies",
+  "description": "A cozy firefly catching game. Sweep your finger to catch glowing fireflies.",
+  "start_url": "./index.html",
+  "display": "fullscreen",
+  "orientation": "any",
+  "background_color": "#0d0a18",
+  "theme_color": "#141021",
+  "icons": [
+    { "src": "icon.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
