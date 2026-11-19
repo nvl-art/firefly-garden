@@ -573,10 +573,10 @@
     }
     return f.cachedHue;
   }
-    // ---- firefly state ----
+
+  // ---- firefly state ----
   const fireflies = [];
   const MAX_FLY = 60;
-  const LOW_POWER_FLY_CAP = 18;
   let caught = 0;
   let comboCount = 0;
   let comboTimer = null;
@@ -609,8 +609,6 @@
   }
 
   function syncPopulation() {
-    const cap = settings.lowPower ? LOW_POWER_FLY_CAP : MAX_FLY;
-    settings.popTarget = Math.min(settings.popTarget, cap);
     if (fireflies.length < settings.popTarget) {
       spawn(settings.popTarget - fireflies.length);
     } else if (fireflies.length > settings.popTarget) {
@@ -741,7 +739,7 @@
   let bgParticles = [];
   function bgMax() {
     return settings.lowPower
-      ? { snow: 12, ocean: 8, void_: 16 }
+      ? { snow: 30, ocean: 20, void_: 40 }
       : { snow: 55, ocean: 36, void_: 70 };
   }
 
@@ -1098,7 +1096,7 @@
       }
     }
     const cr = catchRadius();
-        for (let s = 0; s <= steps; s++) {
+    for (let s = 0; s <= steps; s++) {
       const px = x0 + dx * (s / steps);
       const py = y0 + dy * (s / steps);
       for (let i = fireflies.length - 1; i >= 0; i--) {
@@ -1116,8 +1114,7 @@
   const sparks = [];
   let SPARK_POOL = 350;
   function burst(x, y, hue) {
-    const burstCount = settings.lowPower ? 6 : 14;
-    for (let i = 0; i < burstCount; i++) {
+    for (let i = 0; i < 14; i++) {
       if (sparks.length >= SPARK_POOL) return;
       const a = Math.random() * Math.PI * 2;
       const sp = 30 + Math.random() * 90;
@@ -1185,8 +1182,7 @@
   function pushTrail(x, y) {
     trailHueSeed += 7;
     trail.push({ x, y, life: 1, hue: trailHueSeed % 360 });
-    const trailCap = settings.lowPower ? 18 : TRAIL_MAX;
-    if (trail.length > trailCap) trail.splice(0, trail.length - trailCap);
+    if (trail.length > TRAIL_MAX) trail.shift();
   }
 
   function drawTrail(dt) {
@@ -1346,29 +1342,28 @@
     settings.glowMult = v; val.textContent = v.toFixed(1);
   });
   bindSlider("popSlider", "popVal", (v, val) => {
-    const cap = settings.lowPower ? LOW_POWER_FLY_CAP : MAX_FLY;
+    const cap = settings.lowPower ? 18 : MAX_FLY;
     settings.popTarget = Math.min(v, cap);
-    document.getElementById("popSlider").value = settings.popTarget;
     val.textContent = settings.popTarget;
+    document.getElementById("popSlider").value = settings.popTarget;
     syncPopulation();
   });
 
   document.getElementById("lowPowSwitch").addEventListener("click", function () {
     settings.lowPower = !settings.lowPower;
     this.classList.toggle("on", settings.lowPower);
+    const popSlider = document.getElementById("popSlider");
     if (settings.lowPower) {
-      SPARK_POOL = 70;
-      if (settings.popTarget > LOW_POWER_FLY_CAP) {
-        settings.popTarget = LOW_POWER_FLY_CAP;
-        document.getElementById("popSlider").value = LOW_POWER_FLY_CAP;
-        document.getElementById("popVal").textContent = LOW_POWER_FLY_CAP;
-      }
+      SPARK_POOL = 80;
+      popSlider.max = 18;
+      if (settings.popTarget > 18) settings.popTarget = 18;
+      popSlider.value = settings.popTarget;
+      document.getElementById("popVal").textContent = settings.popTarget;
       syncPopulation();
-      trail.length = Math.min(trail.length, 18);
-      sparks.length = Math.min(sparks.length, SPARK_POOL);
-      showToast("🔋 low-power mode on — lighter 24fps mode");
+      showToast("🔋 low-power mode on — smoother workload, fewer effects");
     } else {
       SPARK_POOL = 350;
+      popSlider.max = 50;
       showToast("full power mode ⚡");
     }
     resize();
@@ -1419,6 +1414,8 @@
     document.getElementById("puSwitch").classList.add("on");
     document.getElementById("soundSwitch").classList.add("on");
     document.getElementById("lowPowSwitch").classList.remove("on");
+    document.getElementById("popSlider").max = 50;
+    settings.lowPower = false;
     Object.values(swatchEls).forEach(el => el.classList.remove("active"));
     swatchEls[DEFAULTS.theme].classList.add("active");
     Object.values(seasonEls).forEach(el => el.classList.remove("active"));
@@ -1435,351 +1432,7 @@
 
   document.getElementById("moreBtn").addEventListener("click", () => {
     ensureAudio();
-    const cap = settings.lowPower ? LOW_POWER_FLY_CAP : MAX_FLY;
-    settings.popTarget = Math.min(cap, settings.popTarget + 10);
-    document.getElementById("popSlider").value = settings.popTarget;
-    document.getElementById("popVal").textContent = settings.popTarget;
-    syncPopulation();
-    showToast("10 more fireflies released 🪄");
-  });
-      for (let s = 0; s <= steps; s++) {
-      const px = x0 + dx * (s / steps);
-      const py = y0 + dy * (s / steps);
-      for (let i = fireflies.length - 1; i >= 0; i--) {
-        const f = fireflies[i];
-        const fx = f.x - px, fy = f.y - py;
-        const rr = (f.golden ? f.r + 4 : f.r) + cr;
-        if (fx * fx + fy * fy <= rr * rr) {
-          fireflies.splice(i, 1);
-          caughtFly(f);
-        }
-      }
-    }
-  }
-
-  const sparks = [];
-  let SPARK_POOL = 350;
-  function burst(x, y, hue) {
-    const burstCount = settings.lowPower ? 6 : 14;
-    for (let i = 0; i < burstCount; i++) {
-      if (sparks.length >= SPARK_POOL) return;
-      const a = Math.random() * Math.PI * 2;
-      const sp = 30 + Math.random() * 90;
-      sparks.push({
-        x, y,
-        vx: Math.cos(a) * sp,
-        vy: Math.sin(a) * sp - 20,
-        life: 1,
-        hue: hue + (Math.random() * 30 - 15),
-        size: 1.5 + Math.random() * 2.5
-      });
-    }
-  }
-
-  // ---- difficulty waves + drift ----
-  const DRIFT_BASE_INTERVAL = 10;
-  let driftCountdown = DRIFT_BASE_INTERVAL;
-  let wave = 1;
-  let waveElapsed = 0;
-  const WAVE_EVERY = 45;
-
-  function driftAmount() {
-    return Math.min(10 + (wave - 1) * 5, 30);
-  }
-
-  function driftAway() {
-    if (!settings.driftOn) return;
-    let normalCount = 0;
-    for (let i = 0; i < fireflies.length; i++) if (!fireflies[i].golden) normalCount++;
-    const n = Math.min(driftAmount(), normalCount);
-    if (n === 0) {
-      showToast("the garden went quiet… releasing a few more 🕯️");
-      syncPopulation();
-      return;
-    }
-    let removed = 0;
-    for (let i = fireflies.length - 1; i >= 0 && removed < n; i--) {
-      const f = fireflies[i];
-      if (f.golden) continue;
-      fireflies.splice(i, 1);
-      removed++;
-      const hue = flyHue(f);
-      for (let j = 0; j < 4; j++) {
-        if (sparks.length >= SPARK_POOL) break;
-        sparks.push({
-          x: f.x, y: f.y,
-          vx: (Math.random() - 0.5) * 14,
-          vy: -(10 + Math.random() * 22),
-          life: 0.9,
-          hue,
-          size: 1.2 + Math.random() * 1.6
-        });
-      }
-    }
-    driftSound();
-    showToast(removed + " fireflies drifted away… 💨 (wave " + wave + ")");
-    syncPopulation();
-  }
-
-  // ---- swipe trails ----
-  const trail = [];
-  const TRAIL_MAX = 60;
-  let trailHueSeed = 0;
-
-  function pushTrail(x, y) {
-    trailHueSeed += 7;
-    trail.push({ x, y, life: 1, hue: trailHueSeed % 360 });
-    const trailCap = settings.lowPower ? 18 : TRAIL_MAX;
-    if (trail.length > trailCap) trail.splice(0, trail.length - trailCap);
-  }
-
-  function drawTrail(dt) {
-    if (trail.length < 2) return;
-    for (let i = trail.length - 1; i >= 0; i--) {
-      trail[i].life -= dt * 1.6;
-      if (trail[i].life <= 0) trail.splice(i, 1);
-    }
-    for (let i = 1; i < trail.length; i++) {
-      const a = trail[i - 1], b = trail[i];
-      ctx.strokeStyle = "hsla(" + b.hue + ", 95%, 68%, " + (b.life * 0.7) + ")";
-      ctx.lineWidth = 3 * b.life + 0.5;
-      ctx.lineCap = "round";
-      ctx.beginPath();
-      ctx.moveTo(a.x, a.y);
-      ctx.lineTo(b.x, b.y);
-      ctx.stroke();
-    }
-  }
-
-  // ---- pointer ----
-  let dragging = false;
-  let lastX = 0, lastY = 0, lastT = 0;
-
-  function pointerDown(x, y) {
-    ensureAudio();
-    dragging = true;
-    lastX = x; lastY = y; lastT = performance.now();
-    tryCatch(x, y);
-    pushTrail(x, y);
-  }
-
-  function pointerMove(x, y) {
-    if (!dragging) return;
-    const now = performance.now();
-    const dt = Math.max(1, now - lastT);
-    const speed = Math.hypot(x - lastX, y - lastY) / dt * 1000;
-    sweep(lastX, lastY, x, y, speed);
-    pushTrail(x, y);
-    if (speed > 150 && sparks.length < SPARK_POOL) {
-      sparks.push({
-        x, y,
-        vx: (Math.random() - 0.5) * 40,
-        vy: (Math.random() - 0.5) * 40 - 10,
-        life: 0.5, hue: 260, size: 1.5
-      });
-    }
-    lastX = x; lastY = y; lastT = now;
-  }
-
-  function pointerUp() { dragging = false; }
-
-  canvas.addEventListener("mousedown", e => pointerDown(e.clientX, e.clientY));
-  canvas.addEventListener("mousemove", e => pointerMove(e.clientX, e.clientY));
-  window.addEventListener("mouseup", pointerUp);
-  canvas.addEventListener("touchstart", e => {
-    const t = e.touches[0];
-    pointerDown(t.clientX, t.clientY);
-  }, { passive: true });
-  canvas.addEventListener("touchmove", e => {
-    e.preventDefault();
-    const t = e.touches[0];
-    pointerMove(t.clientX, t.clientY);
-  }, { passive: false });
-  window.addEventListener("touchend", pointerUp);
-
-  // ---- keyboard (desktop) ----
-  let paused = false;
-  window.addEventListener("keydown", e => {
-    if (e.repeat) return;
-    const k = e.key.toLowerCase();
-    if (k === "s") {
-      panel.classList.toggle("open");
-      gearBtn.classList.toggle("spin");
-    } else if (k === "p") {
-      paused = !paused;
-      showToast(paused ? "paused ⏸ (press P to resume)" : "unpaused ▶");
-    } else if (k === "m") {
-      settings.soundOn = !settings.soundOn;
-      document.getElementById("soundSwitch").classList.toggle("on", settings.soundOn);
-      showToast(settings.soundOn ? "sound on 🔊" : "muted 🔇");
-      if (settings.soundOn) chime(0.7);
-    }
-  });
-
-  // ---- settings UI ----
-  const gearBtn = document.getElementById("gearBtn");
-  const panel = document.getElementById("settingsPanel");
-  gearBtn.addEventListener("click", () => {
-    panel.classList.toggle("open");
-    gearBtn.classList.toggle("spin");
-  });
-
-  const themeRow = document.getElementById("themeRow");
-  const swatchEls = {};
-  THEME_KEYS.forEach(key => {
-    const th = THEMES[key];
-    const sw = document.createElement("div");
-    sw.className = "swatch" + (key === settings.theme ? " active" : "");
-    sw.textContent = th.name;
-    sw.title = th.name;
-    if (key === "rainbow") {
-      sw.style.background = "linear-gradient(135deg, hsl(0,90%,60%), hsl(90,90%,55%), hsl(180,90%,55%), hsl(270,90%,60%), hsl(320,90%,60%))";
-    } else {
-      const mid = th.colors[Math.floor(th.colors.length / 2)];
-      sw.style.background = "linear-gradient(135deg, hsl(" + th.colors[0] + ",95%,60%), hsl(" + mid + ",95%,60%), hsl(" + th.colors[th.colors.length - 1] + ",95%,60%))";
-    }
-    sw.addEventListener("click", () => {
-      settings.theme = key;
-      settings.customColor = null;
-      document.getElementById("customColor").value = "#ffd166";
-      Object.values(swatchEls).forEach(el => el.classList.remove("active"));
-      sw.classList.add("active");
-      colorVersion++;
-      showToast(th.name + " fireflies ✨");
-    });
-    themeRow.appendChild(sw);
-    swatchEls[key] = sw;
-  });
-
-  document.getElementById("customColor").addEventListener("input", e => {
-    settings.customColor = e.target.value;
-    Object.values(swatchEls).forEach(el => el.classList.remove("active"));
-    colorVersion++;
-  });
-
-  const seasonRow = document.getElementById("seasonRow");
-  const seasonEls = {};
-  Object.keys(SEASONS).forEach(key => {
-    const btn = document.createElement("button");
-    btn.className = "season-btn" + (key === settings.season ? " active" : "");
-    btn.textContent = SEASONS[key].name;
-    btn.addEventListener("click", () => {
-      settings.season = key;
-      Object.values(seasonEls).forEach(el => el.classList.remove("active"));
-      btn.classList.add("active");
-      buildSeasonBG();
-      showToast(SEASONS[key].name + " garden 🌍");
-    });
-    seasonRow.appendChild(btn);
-    seasonEls[key] = btn;
-  });
-
-  function bindSlider(id, valId, apply) {
-    const el = document.getElementById(id);
-    const val = document.getElementById(valId);
-    el.addEventListener("input", () => apply(parseFloat(el.value), val));
-  }
-
-  bindSlider("speedSlider", "speedVal", (v, val) => {
-    settings.speedMult = v; val.textContent = v.toFixed(1);
-  });
-  bindSlider("sizeSlider", "sizeVal", (v, val) => {
-    settings.sizeMult = v; val.textContent = v.toFixed(1);
-  });
-  bindSlider("glowSlider", "glowVal", (v, val) => {
-    settings.glowMult = v; val.textContent = v.toFixed(1);
-  });
-  bindSlider("popSlider", "popVal", (v, val) => {
-    const cap = settings.lowPower ? LOW_POWER_FLY_CAP : MAX_FLY;
-    settings.popTarget = Math.min(v, cap);
-    document.getElementById("popSlider").value = settings.popTarget;
-    val.textContent = settings.popTarget;
-    syncPopulation();
-  });
-
-  document.getElementById("lowPowSwitch").addEventListener("click", function () {
-    settings.lowPower = !settings.lowPower;
-    this.classList.toggle("on", settings.lowPower);
-    if (settings.lowPower) {
-      SPARK_POOL = 70;
-      if (settings.popTarget > LOW_POWER_FLY_CAP) {
-        settings.popTarget = LOW_POWER_FLY_CAP;
-        document.getElementById("popSlider").value = LOW_POWER_FLY_CAP;
-        document.getElementById("popVal").textContent = LOW_POWER_FLY_CAP;
-      }
-      syncPopulation();
-      trail.length = Math.min(trail.length, 18);
-      sparks.length = Math.min(sparks.length, SPARK_POOL);
-      showToast("🔋 low-power mode on — lighter 24fps mode");
-    } else {
-      SPARK_POOL = 350;
-      showToast("full power mode ⚡");
-    }
-    resize();
-    buildSeasonBG();
-  });
-
-  document.getElementById("driftSwitch").addEventListener("click", function () {
-    settings.driftOn = !settings.driftOn;
-    this.classList.toggle("on", settings.driftOn);
-    if (settings.driftOn) {
-      driftCountdown = DRIFT_BASE_INTERVAL;
-      showToast("wind drift on — keep sweeping! ⏳");
-    } else {
-      showToast("zen mode: no drift 🧘");
-    }
-  });
-
-  document.getElementById("puSwitch").addEventListener("click", function () {
-    settings.powerUpsOn = !settings.powerUpsOn;
-    this.classList.toggle("on", settings.powerUpsOn);
-    if (!settings.powerUpsOn) {
-      pickups.length = 0;
-      effects.freeze = 0; effects.magnet = 0; effects.double = 0;
-      showToast("power-ups off");
-    } else {
-      showToast("power-ups on — watch for drops 🎁");
-    }
-  });
-
-  document.getElementById("soundSwitch").addEventListener("click", function () {
-    settings.soundOn = !settings.soundOn;
-    this.classList.toggle("on", settings.soundOn);
-    if (settings.soundOn) { ensureAudio(); chime(0.7); }
-  });
-
-  document.getElementById("resetBtn").addEventListener("click", () => {
-    Object.assign(settings, DEFAULTS);
-    document.getElementById("speedSlider").value = 1;
-    document.getElementById("sizeSlider").value = 1;
-    document.getElementById("glowSlider").value = 1;
-    document.getElementById("popSlider").value = 20;
-    document.getElementById("speedVal").textContent = "1.0";
-    document.getElementById("sizeVal").textContent = "1.0";
-    document.getElementById("glowVal").textContent = "1.0";
-    document.getElementById("popVal").textContent = "20";
-    document.getElementById("customColor").value = "#ffd166";
-    document.getElementById("driftSwitch").classList.add("on");
-    document.getElementById("puSwitch").classList.add("on");
-    document.getElementById("soundSwitch").classList.add("on");
-    document.getElementById("lowPowSwitch").classList.remove("on");
-    Object.values(swatchEls).forEach(el => el.classList.remove("active"));
-    swatchEls[DEFAULTS.theme].classList.add("active");
-    Object.values(seasonEls).forEach(el => el.classList.remove("active"));
-    seasonEls[DEFAULTS.season].classList.add("active");
-    colorVersion++;
-    SPARK_POOL = 350;
-    resize();
-    buildSeasonBG();
-    pickups.length = 0;
-    effects.freeze = 0; effects.magnet = 0; effects.double = 0;
-    syncPopulation();
-    showToast("back to defaults ↺");
-  });
-
-  document.getElementById("moreBtn").addEventListener("click", () => {
-    ensureAudio();
-    const cap = settings.lowPower ? LOW_POWER_FLY_CAP : MAX_FLY;
+    const cap = settings.lowPower ? 18 : MAX_FLY;
     settings.popTarget = Math.min(cap, settings.popTarget + 10);
     document.getElementById("popSlider").value = settings.popTarget;
     document.getElementById("popVal").textContent = settings.popTarget;
@@ -1903,7 +1556,7 @@
     drawTrail(dt);
 
     const sm = settings.sizeMult;
-    const gm = settings.lowPower ? Math.min(0.78, settings.glowMult) : settings.glowMult;
+    const gm = settings.lowPower ? Math.min(1, settings.glowMult) : settings.glowMult;
     const frozen = effects.freeze > 0;
     const moveMult = frozen ? 0.15 : settings.speedMult;
 
@@ -1922,7 +1575,7 @@
         : 0.3 + 0.7 * Math.pow(0.5 + 0.5 * Math.sin(t * 0.001 * f.blinkSpeed + f.phase), 2);
 
       const scale = f.golden ? 1.35 : 1;
-      const drawSize = SPRITE_BASE * (settings.lowPower ? 0.62 : 0.75) * sm * scale * (0.7 + 0.3 * blink);
+      const drawSize = SPRITE_BASE * 0.75 * sm * scale * (0.7 + 0.3 * blink);
       const half = drawSize / 2;
       ctx.globalAlpha = Math.min(1, blink * gm);
       ctx.drawImage(sprite, f.x - half, f.y - half, drawSize, drawSize);
@@ -1972,7 +1625,7 @@
 </script>
 <script>
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("./sw.js");
+  navigator.serviceWorker.register("./sw.js").catch(() => {});
 }
 </script>
 </body>
