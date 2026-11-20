@@ -1,4 +1,4 @@
-code = r'''<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -370,6 +370,22 @@ code = r'''<!DOCTYPE html>
     color: #b7a9ea;
     margin: 0 2px;
   }
+
+  .collection-btn { position:fixed; left:16px; bottom:18px; z-index:8; border:1px solid rgba(157,118,255,.5); border-radius:24px; padding:10px 14px; color:#e7dcff; background:rgba(25,12,48,.82); font:13px system-ui, sans-serif; backdrop-filter:blur(8px); }
+  .collection-panel { position:fixed; z-index:30; inset:0; display:none; align-items:center; justify-content:center; padding:16px; background:rgba(4,3,14,.76); backdrop-filter:blur(8px); }
+  .collection-panel.open { display:flex; }
+  .collection-card { width:min(440px,94vw); max-height:84vh; overflow:auto; border:1px solid rgba(164,126,255,.35); border-radius:20px; padding:18px; background:linear-gradient(160deg,#18102b,#080713); color:#eee; box-shadow:0 0 40px rgba(100,50,180,.2); }
+  .collection-card h2 { margin:0 0 6px; font-size:20px; }
+  .collection-card p { color:#aaa2c6; font-size:12px; margin:0 0 12px; }
+  .species-list { display:grid; gap:7px; }
+  .species-entry { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:9px 11px; border-radius:12px; background:rgba(255,255,255,.045); font-size:13px; }
+  .species-entry .swatch { width:12px; height:12px; display:inline-block; border-radius:50%; margin-right:8px; box-shadow:0 0 12px currentColor; }
+  .species-entry small { color:#a8a0bd; }
+  .decor-controls { margin-top:15px; display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .decor-controls button, .collection-close { border:1px solid #594178; background:#211637; color:#e6d9ff; border-radius:12px; padding:10px; font:inherit; }
+  .collection-close { width:100%; margin-top:12px; }
+  @media(max-width:600px){ .collection-btn { bottom:14px; left:10px; } }
+
 </style>
 </head>
 <body>
@@ -460,6 +476,14 @@ code = r'''<!DOCTYPE html>
 <div class="controls">
   <button id="moreBtn">✨ Release 10 more</button>
 </div>
+
+<button class="collection-btn" id="collectionBtn">✨ Journal & Garden</button>
+<div class="collection-panel" id="collectionPanel" aria-hidden="true">
+ <div class="collection-card"><h2>✨ Firefly Journal</h2><p>Discover each glow. Counts save on this device.</p>
+ <div class="species-list" id="speciesList"></div>
+ <div class="decor-controls"><button data-decor="flowers">🌼 Flowers</button><button data-decor="mushrooms">🍄 Mushrooms</button><button data-decor="lanterns">🏮 Lanterns</button><button data-decor="pond">💧 Mini pond</button></div>
+ <button class="collection-close" id="collectionClose">Close</button></div></div>
+
 <div class="kbd-hint"><kbd>S</kbd> settings · <kbd>P</kbd> pause · <kbd>M</kbd> mute</div>
 
 <script>
@@ -927,6 +951,7 @@ code = r'''<!DOCTYPE html>
 
   function computeHue(f) {
     if (f.kind === "golden") return 46;
+    if (f.species) return f.species.hue;
     if (f.kind === "split") return 185;
     if (f.kind === "shadow") return 285;
     if (settings.customColor) {
@@ -956,6 +981,29 @@ code = r'''<!DOCTYPE html>
   }
 
   // ---- firefly state (normal, golden, split, mini, shadow) ----
+  const SPECIES = [
+    { id:"amber", name:"Amber Glow", hue:38, rarity:"Common", chance:0.54 },
+    { id:"azure", name:"Azure Spark", hue:205, rarity:"Common", chance:0.23 },
+    { id:"rose", name:"Rose Flicker", hue:330, rarity:"Uncommon", chance:0.14 },
+    { id:"emerald", name:"Emerald Wisp", hue:142, rarity:"Rare", chance:0.07 },
+    { id:"violet", name:"Violet Phantom", hue:275, rarity:"Very Rare", chance:0.02 },
+    { id:"golden", name:"Golden Firefly", hue:46, rarity:"Legendary", chance:0 }
+  ];
+  const JOURNAL_KEY = "lumo_firefly_journal_v1";
+  const DECOR_KEY = "lumo_firefly_decor_v1";
+  const journal = { counts: {}, discovered: {} };
+  const decorations = { flowers:false, mushrooms:false, lanterns:false, pond:false };
+  try { Object.assign(journal, JSON.parse(localStorage.getItem(JOURNAL_KEY)||"{}")); } catch(e) {}
+  try { Object.assign(decorations, JSON.parse(localStorage.getItem(DECOR_KEY)||"{}")); } catch(e) {}
+  function chooseSpecies(){ const r=Math.random(); let sum=0; for(const sp of SPECIES){sum+=sp.chance;if(r<sum)return sp;} return SPECIES[0]; }
+  function saveJournal(){ try{localStorage.setItem(JOURNAL_KEY,JSON.stringify(journal));}catch(e){} }
+  function renderJournal(){ const list=document.getElementById("speciesList"); if(!list)return; list.innerHTML=""; SPECIES.forEach(sp=>{const count=journal.counts[sp.id]||0; const found=!!journal.discovered[sp.id]; const row=document.createElement("div"); row.className="species-entry"; row.innerHTML=`<span><i class="swatch" style="color:hsl(${sp.hue},100%,65%);background:hsl(${sp.hue},100%,65%)"></i>${found?sp.name:"???"}</span><small>${found?sp.rarity+" · caught "+count:"Undiscovered"}</small>`; list.appendChild(row);}); }
+  function recordCatch(f){const sp=f.species||(f.kind==="golden"?SPECIES[5]:null); if(!sp)return; journal.counts[sp.id]=(journal.counts[sp.id]||0)+1; journal.discovered[sp.id]=true; saveJournal(); renderJournal();}
+  function drawDecorations(t){ if(decorations.pond){ctx.save();ctx.globalAlpha=.48;ctx.fillStyle="#174d6b";ctx.beginPath();ctx.ellipse(W*.78,H*.88,Math.min(W,H)*.09,Math.min(W,H)*.035,0,0,Math.PI*2);ctx.fill();ctx.strokeStyle="#5ce4f3";ctx.stroke();ctx.restore();}
+    if(decorations.flowers){for(let i=0;i<9;i++){const x=(i*137+53)%W,y=H-18-(i%4)*8;ctx.save();ctx.globalAlpha=.6;ctx.strokeStyle="#397f48";ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x,y-16);ctx.stroke();ctx.fillStyle=`hsl(${(i*47)%360},90%,70%)`;for(let k=0;k<5;k++){const a=k*Math.PI*2/5;ctx.beginPath();ctx.arc(x+Math.cos(a)*4,y-18+Math.sin(a)*4,3,0,Math.PI*2);ctx.fill();}ctx.restore();}}
+    if(decorations.mushrooms){for(let i=0;i<7;i++){const x=(i*191+88)%W,y=H-13-(i%3)*5;ctx.save();ctx.globalAlpha=.55;ctx.fillStyle="#d6c1ad";ctx.fillRect(x-2,y-10,4,9);ctx.fillStyle="#c46a9c";ctx.beginPath();ctx.ellipse(x,y-11,8,5,0,Math.PI,Math.PI*2);ctx.fill();ctx.restore();}}
+    if(decorations.lanterns){for(let i=0;i<5;i++){const x=(i*211+100)%W,y=H*.18+(i%3)*42;ctx.save();ctx.globalAlpha=.35+Math.sin(t*.001+i)*.08;ctx.strokeStyle="#d9a6ff";ctx.fillStyle="#a15aff";ctx.beginPath();ctx.arc(x,y,9,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.restore();}}
+  }
   const fireflies = [];
   const MAX_FLY = 60;
   let caught = 0;
@@ -965,6 +1013,7 @@ code = r'''<!DOCTYPE html>
   function makeFly(opts) {
     const o = opts || {};
     const kind = o.kind || "normal";
+    const species = (kind === "normal") ? (o.species || chooseSpecies()) : null;
     let r = 9 + Math.random() * 6;
     let size = 4 + Math.random() * 5;
     let blinkSpeed = 0.6 + Math.random() * 1.2;
@@ -988,6 +1037,7 @@ code = r'''<!DOCTYPE html>
       cachedHue: 45,
       colorV: -1,
       kind,
+      species,
       golden: kind === "golden",
       bornAt: performance.now()
     };
@@ -1486,6 +1536,7 @@ code = r'''<!DOCTYPE html>
     }
 
     const wasGolden = kind === "golden";
+    recordCatch(f);
     const base = wasGolden ? 10 : 1;
     const gained = effects.double > 0 ? base * 2 : base;
     caught += gained;
@@ -2190,10 +2241,20 @@ code = r'''<!DOCTYPE html>
     ctx.globalAlpha = 1;
 
     drawGardenScenery(dt, t);
+    drawDecorations(t);
     drawJarCorner(dt, t);
 
     scheduleNext();
   }
+
+
+  const collectionPanel=document.getElementById("collectionPanel");
+  document.getElementById("collectionBtn").addEventListener("click",()=>{renderJournal();collectionPanel.classList.add("open");collectionPanel.setAttribute("aria-hidden","false");});
+  document.getElementById("collectionClose").addEventListener("click",()=>{collectionPanel.classList.remove("open");collectionPanel.setAttribute("aria-hidden","true");});
+  collectionPanel.addEventListener("click",e=>{if(e.target===collectionPanel)collectionPanel.classList.remove("open");});
+  collectionPanel.querySelectorAll("[data-decor]").forEach(btn=>btn.addEventListener("click",()=>{const key=btn.dataset.decor;decorations[key]=!decorations[key];try{localStorage.setItem(DECOR_KEY,JSON.stringify(decorations));}catch(e){}btn.style.opacity=decorations[key]?"1":".55";showToast(`${key} ${decorations[key]?"on":"off"}`);}));
+  collectionPanel.querySelectorAll("[data-decor]").forEach(btn=>{btn.style.opacity=decorations[btn.dataset.decor]?"1":".55";});
+  renderJournal();
 
   loadSettings();
   syncSettingsUI();
@@ -2211,14 +2272,4 @@ if ("serviceWorker" in navigator) {
 }
 </script>
 </body>
-</html>'''
-
-with open("index.html", "w", encoding="utf-8") as f:
-    f.write(code.strip() + "\n")
-
-with open("index.html", "r", encoding="utf-8") as f:
-    lines = f.readlines()
-print("Total lines:", len(lines))
-print("First line:", lines[0].strip())
-print("Last line:", lines[-1].strip())
-
+  </html>
