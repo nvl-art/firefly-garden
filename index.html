@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+html_code = '''<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -442,7 +442,6 @@
   let W = 0, H = 0, DPR = 1;
 
   function resize() {
-    // Lower internal resolution in low-power mode to reduce GPU workload.
     const cap = settings.lowPower ? 0.8 : (IS_DESKTOP ? 2 : 1.5);
     DPR = Math.min(cap, window.devicePixelRatio || 1);
     W = window.innerWidth;
@@ -474,7 +473,7 @@
   };
 
   const DEFAULTS = {
-    theme: "classic",   // gold default
+    theme: "classic",
     customColor: null,
     season: "night",
     speedMult: 1,
@@ -789,7 +788,7 @@
     if (badgesEl.innerHTML !== html) badgesEl.innerHTML = html;
   }
 
-  // ---- season background (sprite-stamped, particle counts adapt to low-power) ----
+  // ---- season background ----
   let bgParticles = [];
   function bgMax() {
     return settings.lowPower
@@ -1704,6 +1703,11 @@ if ("serviceWorker" in navigator) {
 </html>'''
 
 with open("index.html", "w", encoding="utf-8") as f:
-    f.write(html_code)
-print("Saved index.html successfully")
+    f.write(html_code.strip() + "\n")
+
+with open("index.html", "r", encoding="utf-8") as f:
+    first_line = f.readline().strip()
+    last_line = f.readlines()[-1].strip()
+print("First line:", first_line)
+print("Last line:", last_line)
 
