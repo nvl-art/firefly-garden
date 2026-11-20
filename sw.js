@@ -1,4 +1,4 @@
-const CACHE_NAME = "firefly-garden-v2";
+const CACHE_NAME = "firefly-garden-v3";
 const INDEX_URL = "./index.html";
 const MANIFEST_URL = "./manifest.json";
 
