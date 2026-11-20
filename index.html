@@ -1,4 +1,4 @@
-html_code = '''<!DOCTYPE html>
+code = r'''<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -50,6 +50,12 @@ html_code = '''<!DOCTYPE html>
     letter-spacing: 1px;
     margin-top: 4px;
   }
+  .hud .jar-info {
+    font-size: 11px;
+    color: #9be7ff;
+    letter-spacing: 1px;
+    margin-top: 3px;
+  }
   .hud .timer {
     font-size: 12px;
     color: #8f83bd;
@@ -61,6 +67,7 @@ html_code = '''<!DOCTYPE html>
     margin-top: 8px;
     display: flex;
     justify-content: center;
+    flex-wrap: wrap;
     gap: 8px;
     min-height: 26px;
   }
@@ -73,6 +80,7 @@ html_code = '''<!DOCTYPE html>
     color: #fff;
   }
   .badge.gold { background: rgba(255,196,60,.25); border-color: rgba(255,196,60,.7); }
+  .badge.jar { background: rgba(120,220,255,.2); border-color: rgba(120,220,255,.6); }
 
   @media (min-width: 900px) {
     .hud {
@@ -186,10 +194,10 @@ html_code = '''<!DOCTYPE html>
     position: fixed;
     top: 70px;
     right: 16px;
-    width: 280px;
+    width: 286px;
     max-height: calc(100vh - 100px);
     overflow-y: auto;
-    background: rgba(26,19,44,.92);
+    background: rgba(26,19,44,.94);
     border: 1px solid rgba(109,74,255,.45);
     border-radius: 16px;
     padding: 18px;
@@ -214,7 +222,7 @@ html_code = '''<!DOCTYPE html>
   }
   .theme-row { display: flex; flex-wrap: wrap; gap: 7px; }
   .swatch {
-    width: 40px;
+    width: 42px;
     height: 30px;
     border-radius: 8px;
     border: 2px solid transparent;
@@ -224,8 +232,8 @@ html_code = '''<!DOCTYPE html>
     justify-content: center;
     font-size: 9px;
     font-weight: 700;
-    color: rgba(255,255,255,.85);
-    text-shadow: 0 1px 2px rgba(0,0,0,.6);
+    color: rgba(255,255,255,.88);
+    text-shadow: 0 1px 2px rgba(0,0,0,.65);
   }
   .swatch.active { border-color: #fff; }
   .season-row { display: flex; flex-wrap: wrap; gap: 7px; }
@@ -278,6 +286,19 @@ html_code = '''<!DOCTYPE html>
     margin: -8px 0 12px;
     line-height: 1.4;
   }
+  .action-btn {
+    width: 100%;
+    padding: 9px;
+    border-radius: 10px;
+    border: 1px solid #38304e;
+    background: transparent;
+    color: #cfc4f5;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all .2s;
+    margin-bottom: 8px;
+  }
+  .action-btn:hover { color: #fff; border-color: var(--purple); background: rgba(109,74,255,.15); }
   .reset-btn {
     width: 100%;
     padding: 9px;
@@ -302,6 +323,7 @@ html_code = '''<!DOCTYPE html>
     transition: opacity .8s;
     pointer-events: none;
     z-index: 5;
+    padding: 0 16px;
   }
   .toast.show { opacity: 1; }
   .controls {
@@ -402,6 +424,14 @@ html_code = '''<!DOCTYPE html>
   </div>
 
   <div class="toggle-row">
+    <span>🎵 Relaxing ambient music</span>
+    <div class="switch on" id="musicSwitch"></div>
+  </div>
+  <div class="toggle-row">
+    <span>🌿 Garden silhouettes</span>
+    <div class="switch on" id="scenerySwitch"></div>
+  </div>
+  <div class="toggle-row">
     <span>Wind drift (waves get harder)</span>
     <div class="switch on" id="driftSwitch"></div>
   </div>
@@ -414,13 +444,15 @@ html_code = '''<!DOCTYPE html>
     <div class="switch on" id="soundSwitch"></div>
   </div>
 
-  <button class="reset-btn" id="resetBtn">↺ Reset to defaults</button>
+  <button class="action-btn" id="resetRunBtn">🔄 Reset current run</button>
+  <button class="reset-btn" id="resetBtn">↺ Reset settings to defaults</button>
 </div>
 
 <div class="hud">
   <div class="count" id="count">0</div>
   <div class="label">fireflies caught</div>
   <div class="best" id="best"></div>
+  <div class="jar-info" id="jarInfo">🫙 Mason Jar · Lv.1 (0/25 to Lantern)</div>
   <div class="timer" id="timer">next drift in 10s</div>
   <div class="badges" id="badges"></div>
 </div>
@@ -451,10 +483,11 @@ html_code = '''<!DOCTYPE html>
     canvas.style.width = W + "px";
     canvas.style.height = H + "px";
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    buildGardenScenery();
   }
   window.addEventListener("resize", resize);
 
-  // ---- settings ----
+  // ---- settings + auto-save ----
   const THEMES = {
     classic: { name: "Gold",  colors: [45, 55, 65, 72] },
     purple:  { name: "Purple", colors: [260, 272, 285, 295] },
@@ -466,10 +499,10 @@ html_code = '''<!DOCTYPE html>
   };
 
   const SEASONS = {
-    night: { name: "🌙 Night", bg: "#141021" },
-    snow:  { name: "❄️ Snow",  bg: "#171d2e" },
-    ocean: { name: "🌊 Ocean", bg: "#081226" },
-    void_: { name: "🌌 Void",  bg: "#060310" }
+    night: { name: "🌙 Night", bg: "#141021", grass: "#0b0816", glow: "rgba(130, 95, 255, 0.25)" },
+    snow:  { name: "❄️ Snow",  bg: "#171d2e", grass: "#101626", glow: "rgba(165, 210, 255, 0.24)" },
+    ocean: { name: "🌊 Ocean", bg: "#081226", grass: "#050c1a", glow: "rgba(70, 205, 235, 0.25)" },
+    void_: { name: "🌌 Void",  bg: "#060310", grass: "#04020b", glow: "rgba(185, 110, 255, 0.25)" }
   };
 
   const DEFAULTS = {
@@ -483,9 +516,48 @@ html_code = '''<!DOCTYPE html>
     driftOn: true,
     powerUpsOn: true,
     soundOn: true,
+    musicOn: true,
+    sceneryOn: true,
     lowPower: false
   };
   const settings = Object.assign({}, DEFAULTS);
+
+  const SETTINGS_KEY = "lumo_firefly_settings_v1";
+  function saveSettings() {
+    try {
+      localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+    } catch (e) {}
+  }
+
+  function loadSettings() {
+    try {
+      const raw = localStorage.getItem(SETTINGS_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      if (!parsed || typeof parsed !== "object") return;
+      if (THEMES[parsed.theme]) settings.theme = parsed.theme;
+      if (typeof parsed.customColor === "string" && /^#[0-9a-fA-F]{6}$/.test(parsed.customColor)) {
+        settings.customColor = parsed.customColor;
+      } else {
+        settings.customColor = null;
+      }
+      if (SEASONS[parsed.season]) settings.season = parsed.season;
+      if (typeof parsed.speedMult === "number") settings.speedMult = Math.min(3, Math.max(0.3, parsed.speedMult));
+      if (typeof parsed.sizeMult === "number") settings.sizeMult = Math.min(2.5, Math.max(0.5, parsed.sizeMult));
+      if (typeof parsed.glowMult === "number") settings.glowMult = Math.min(2, Math.max(0.2, parsed.glowMult));
+      if (typeof parsed.popTarget === "number") settings.popTarget = Math.min(60, Math.max(6, Math.round(parsed.popTarget)));
+      if (typeof parsed.driftOn === "boolean") settings.driftOn = parsed.driftOn;
+      if (typeof parsed.powerUpsOn === "boolean") settings.powerUpsOn = parsed.powerUpsOn;
+      if (typeof parsed.soundOn === "boolean") settings.soundOn = parsed.soundOn;
+      if (typeof parsed.musicOn === "boolean") settings.musicOn = parsed.musicOn;
+      if (typeof parsed.sceneryOn === "boolean") settings.sceneryOn = parsed.sceneryOn;
+      if (typeof parsed.lowPower === "boolean") settings.lowPower = parsed.lowPower;
+      if (settings.lowPower) {
+        SPARK_POOL = 80;
+        if (settings.popTarget > 18) settings.popTarget = 18;
+      }
+    } catch (e) {}
+  }
 
   // ---- high score (guarded) ----
   const HS_KEY = "lumo_firefly_best";
@@ -497,12 +569,236 @@ html_code = '''<!DOCTYPE html>
   }
   updateBestUI();
 
+  // ---- jar / lantern level system ----
+  const JAR_TIERS = [
+    { min: 0,   name: "Mason Jar",        icon: "🫙", bonusRadius: 0,  nextGoal: 25,  nextName: "Lantern" },
+    { min: 25,  name: "Paper Lantern",    icon: "🏮", bonusRadius: 3,  nextGoal: 60,  nextName: "Terrarium" },
+    { min: 60,  name: "Moss Terrarium",   icon: "🌿", bonusRadius: 6,  nextGoal: 120, nextName: "Crystal Orb" },
+    { min: 120, name: "Crystal Lantern",  icon: "🔮", bonusRadius: 10, nextGoal: null, nextName: null }
+  ];
+
+  const jarInfoEl = document.getElementById("jarInfo");
+  const jarOrbs = [];
+
+  function getJarTier() {
+    let idx = 0;
+    for (let i = 0; i < JAR_TIERS.length; i++) {
+      if (caught >= JAR_TIERS[i].min) idx = i;
+    }
+    return Object.assign({ level: idx + 1 }, JAR_TIERS[idx]);
+  }
+
+  function syncJarOrbs(hue) {
+    const desired = Math.min(18, Math.floor(caught / 4));
+    while (jarOrbs.length < desired) {
+      jarOrbs.push({
+        a: Math.random() * Math.PI * 2,
+        rFrac: 0.25 + Math.random() * 0.55,
+        yFrac: 0.2 + Math.random() * 0.65,
+        speed: (0.8 + Math.random() * 1.4) * (Math.random() < 0.5 ? 1 : -1),
+        hue: typeof hue === "number" ? hue : 48
+      });
+    }
+    while (jarOrbs.length > desired) {
+      jarOrbs.pop();
+    }
+  }
+
+  function updateJarUI(justLeveledUp, tier) {
+    const t = tier || getJarTier();
+    if (t.nextGoal !== null) {
+      jarInfoEl.textContent = `${t.icon} ${t.name} · Lv.${t.level} (${caught}/${t.nextGoal} to ${t.nextName})`;
+    } else {
+      jarInfoEl.textContent = `${t.icon} ${t.name} · MAX Lv.${t.level} (+10 reach)`;
+    }
+    if (justLeveledUp) {
+      showToast(`${t.icon} Jar upgraded to ${t.name} (Lv.${t.level})! Wider catch reach ✨`);
+      chime(1.6);
+    }
+  }
+
+  let prevJarLevel = 1;
+  function checkJarProgress(hue) {
+    syncJarOrbs(hue);
+    const tier = getJarTier();
+    const leveled = tier.level > prevJarLevel;
+    prevJarLevel = tier.level;
+    updateJarUI(leveled, tier);
+  }
+
+  function drawJarCorner(dt, t) {
+    const tier = getJarTier();
+    const jx = Math.min(W - 44, Math.max(44, W - 46));
+    const jy = Math.min(H - 64, Math.max(80, H - 78));
+    const jw = 34;
+    const jh = 44;
+
+    ctx.save();
+    ctx.translate(jx, jy);
+
+    // subtle glow behind jar
+    const glowGrad = ctx.createRadialGradient(0, 0, 4, 0, 0, 46 + tier.level * 5);
+    glowGrad.addColorStop(0, tier.level >= 3 ? "rgba(130, 235, 255, 0.25)" : "rgba(255, 210, 105, 0.18)");
+    glowGrad.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.fillStyle = glowGrad;
+    ctx.beginPath();
+    ctx.arc(0, 0, 46 + tier.level * 5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // glass body
+    ctx.fillStyle = "rgba(28, 22, 48, 0.55)";
+    ctx.strokeStyle = tier.level >= 4 ? "rgba(175, 240, 255, 0.8)" : "rgba(215, 205, 255, 0.55)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.roundRect(-jw / 2, -jh / 2 + 4, jw, jh - 4, tier.level === 4 ? 17 : 8);
+    ctx.fill();
+    ctx.stroke();
+
+    // cork / cap
+    ctx.fillStyle = tier.level >= 3 ? "#7a5cff" : "#8b5a36";
+    ctx.beginPath();
+    ctx.roundRect(-jw / 2 + 3, -jh / 2 - 3, jw - 6, 8, 3);
+    ctx.fill();
+
+    // mini orbiting fireflies inside jar
+    for (let i = 0; i < jarOrbs.length; i++) {
+      const o = jarOrbs[i];
+      o.a += o.speed * dt;
+      const ox = Math.cos(o.a) * (jw * 0.34);
+      const oy = (o.yFrac - 0.5) * (jh - 14) + Math.sin(o.a * 1.4) * 3;
+      const pulse = 0.65 + 0.35 * Math.sin(t * 0.005 + i);
+      ctx.fillStyle = `hsla(${Math.round(o.hue)}, 100%, 72%, ${pulse})`;
+      ctx.beginPath();
+      ctx.arc(ox, oy, 2.4, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // level tag under jar
+    ctx.fillStyle = "rgba(216, 195, 255, 0.8)";
+    ctx.font = "600 10px 'Segoe UI', sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("Lv." + tier.level, 0, jh / 2 + 13);
+
+    ctx.restore();
+  }
+
+  // ---- garden silhouettes & glowing mushrooms ----
+  let grassBlades = [];
+  let mushrooms = [];
+
+  function buildGardenScenery() {
+    grassBlades = [];
+    mushrooms = [];
+    if (!W || !H) return;
+    const count = settings.lowPower ? Math.floor(W / 24) : Math.floor(W / 13);
+    for (let i = 0; i < count; i++) {
+      const x = (i / Math.max(1, count - 1)) * W + (Math.random() - 0.5) * 10;
+      grassBlades.push({
+        x,
+        h: 14 + Math.random() * 24,
+        w: 2.2 + Math.random() * 2.2,
+        phase: Math.random() * Math.PI * 2,
+        speed: 1.1 + Math.random() * 1.4
+      });
+    }
+    const mushCount = Math.max(3, Math.min(8, Math.floor(W / 190)));
+    for (let m = 0; m < mushCount; m++) {
+      const mx = 45 + ((m + 0.5) / mushCount) * Math.max(60, W - 120) + (Math.random() - 0.5) * 26;
+      mushrooms.push({
+        x: mx,
+        y: H - 4,
+        scale: 0.75 + Math.random() * 0.55,
+        glow: 0,
+        hue: 265 + Math.random() * 55
+      });
+    }
+  }
+
+  function drawGardenScenery(dt, t) {
+    if (!settings.sceneryOn) return;
+    const sc = SEASONS[settings.season];
+    const windBoost = settings.driftOn ? (1 + (wave - 1) * 0.25) : 0.6;
+
+    // base ground strip
+    ctx.fillStyle = sc.grass;
+    ctx.fillRect(0, H - 10, W, 10);
+
+    // swaying grass blades
+    ctx.fillStyle = sc.grass;
+    for (let i = 0; i < grassBlades.length; i++) {
+      const b = grassBlades[i];
+      const sway = Math.sin(t * 0.0014 * b.speed + b.phase) * (5 * windBoost);
+      const tipX = b.x + sway;
+      const tipY = H - 6 - b.h;
+      ctx.beginPath();
+      ctx.moveTo(b.x - b.w * 0.5, H);
+      ctx.quadraticCurveTo(b.x + sway * 0.4, H - b.h * 0.5, tipX, tipY);
+      ctx.quadraticCurveTo(b.x + b.w * 0.5 + sway * 0.3, H - b.h * 0.5, b.x + b.w * 0.5, H);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    // glowing mushrooms that light up when fireflies pass nearby
+    for (let m = 0; m < mushrooms.length; m++) {
+      const mush = mushrooms[m];
+      let near = 0;
+      for (let i = 0; i < fireflies.length; i++) {
+        const f = fireflies[i];
+        if (f.kind === "shadow") continue;
+        const dx = f.x - mush.x;
+        const dy = f.y - (mush.y - 16 * mush.scale);
+        if (dx * dx + dy * dy < 95 * 95) {
+          near = 1;
+          break;
+        }
+      }
+      if (near > 0) {
+        mush.glow = Math.min(1, mush.glow + dt * 3);
+      } else {
+        mush.glow = Math.max(0, mush.glow - dt * 1.1);
+      }
+
+      const s = mush.scale;
+      const baseY = mush.y - 2;
+      const stemH = 12 * s;
+      const capR = 10 * s;
+
+      ctx.save();
+      ctx.translate(mush.x, baseY);
+
+      if (mush.glow > 0.02) {
+        const gGrad = ctx.createRadialGradient(0, -stemH, 2, 0, -stemH, 32 * s);
+        gGrad.addColorStop(0, `hsla(${Math.round(mush.hue)}, 95%, 70%, ${mush.glow * 0.45})`);
+        gGrad.addColorStop(1, "rgba(0,0,0,0)");
+        ctx.fillStyle = gGrad;
+        ctx.beginPath();
+        ctx.arc(0, -stemH, 32 * s, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // stem
+      ctx.fillStyle = "#1b162c";
+      ctx.fillRect(-2.5 * s, -stemH, 5 * s, stemH);
+
+      // cap
+      ctx.fillStyle = mush.glow > 0.05
+        ? `hsl(${Math.round(mush.hue)}, 85%, ${22 + mush.glow * 38}%)`
+        : "#171226";
+      ctx.beginPath();
+      ctx.arc(0, -stemH, capR, Math.PI, 0);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.restore();
+    }
+  }
+
   // ---- glow sprites ----
   const spriteCache = new Map();
   const SPRITE_BASE = 128;
 
   function hueToRgb(h) {
-    const c = h / 60;
+    const c = (((h % 360) + 360) % 360) / 60;
     const x = 1 - Math.abs((c % 2) - 1);
     let r = 0, g = 0, b = 0;
     if (c < 1) { r = 1; g = x; }
@@ -514,34 +810,64 @@ html_code = '''<!DOCTYPE html>
     return [r * 255, g * 255, b * 255];
   }
 
-  function getSprite(hue, golden) {
-    const key = (golden ? "G" : "") + (Math.round(hue / 6) * 6);
+  function getSprite(hue, kind) {
+    const prefix = kind === "golden" ? "G" : (kind === "split" ? "S" : (kind === "shadow" ? "D" : "N"));
+    const key = prefix + (Math.round(hue / 6) * 6);
     let entry = spriteCache.get(key);
     if (entry) return entry;
 
-    const effHue = golden ? 46 : ((Math.round(hue / 6) * 6 % 360) + 360) % 360;
+    const effHue = kind === "golden" ? 46 : (kind === "split" ? 185 : (kind === "shadow" ? 285 : ((Math.round(hue / 6) * 6 % 360) + 360) % 360));
     const [rr, gg, bb] = hueToRgb(effHue);
     const rgb = `${rr},${gg},${bb}`;
     const c = document.createElement("canvas");
     c.width = c.height = SPRITE_BASE;
     const g = c.getContext("2d");
 
-    const grad = g.createRadialGradient(64, 64, 0, 64, 64, 64);
-    grad.addColorStop(0, `rgba(${rgb},${golden ? 0.8 : 0.55})`);
-    grad.addColorStop(0.35, `rgba(${rgb},${golden ? 0.35 : 0.22})`);
-    grad.addColorStop(1, `rgba(${rgb},0)`);
-    g.fillStyle = grad;
-    g.fillRect(0, 0, 128, 128);
+    if (kind === "shadow") {
+      const grad = g.createRadialGradient(64, 64, 2, 64, 64, 58);
+      grad.addColorStop(0, "rgba(28, 12, 48, 0.92)");
+      grad.addColorStop(0.55, "rgba(85, 25, 130, 0.45)");
+      grad.addColorStop(1, "rgba(28, 12, 48, 0)");
+      g.fillStyle = grad;
+      g.fillRect(0, 0, 128, 128);
 
-    const coreR = golden ? 18 : 14;
-    const core = g.createRadialGradient(64, 64, 0, 64, 64, coreR);
-    core.addColorStop(0, "rgba(255,255,255,0.98)");
-    core.addColorStop(0.4, `rgba(${rgb},0.9)`);
-    core.addColorStop(1, `rgba(${rgb},0)`);
-    g.fillStyle = core;
-    g.beginPath();
-    g.arc(64, 64, coreR, 0, Math.PI * 2);
-    g.fill();
+      g.fillStyle = "rgba(18, 8, 32, 0.95)";
+      g.beginPath();
+      g.arc(64, 64, 15, 0, Math.PI * 2);
+      g.fill();
+
+      g.strokeStyle = "rgba(255, 85, 135, 0.85)";
+      g.lineWidth = 2;
+      g.beginPath();
+      g.moveTo(59, 59); g.lineTo(69, 69);
+      g.moveTo(69, 59); g.lineTo(59, 69);
+      g.stroke();
+    } else {
+      const grad = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+      grad.addColorStop(0, `rgba(${rgb},${kind === "golden" ? 0.85 : 0.58})`);
+      grad.addColorStop(0.35, `rgba(${rgb},${kind === "golden" ? 0.38 : 0.24})`);
+      grad.addColorStop(1, `rgba(${rgb},0)`);
+      g.fillStyle = grad;
+      g.fillRect(0, 0, 128, 128);
+
+      const coreR = kind === "golden" ? 18 : 14;
+      const core = g.createRadialGradient(64, 64, 0, 64, 64, coreR);
+      core.addColorStop(0, "rgba(255,255,255,0.98)");
+      core.addColorStop(0.4, `rgba(${rgb},0.92)`);
+      core.addColorStop(1, `rgba(${rgb},0)`);
+      g.fillStyle = core;
+      g.beginPath();
+      g.arc(64, 64, coreR, 0, Math.PI * 2);
+      g.fill();
+
+      if (kind === "split") {
+        g.strokeStyle = "rgba(215, 255, 255, 0.85)";
+        g.lineWidth = 2;
+        g.beginPath();
+        g.arc(64, 64, 21, 0, Math.PI * 2);
+        g.stroke();
+      }
+    }
 
     entry = c;
     spriteCache.set(key, entry);
@@ -600,7 +926,9 @@ html_code = '''<!DOCTYPE html>
   const THEME_KEYS = Object.keys(THEMES);
 
   function computeHue(f) {
-    if (f.golden) return 46;
+    if (f.kind === "golden") return 46;
+    if (f.kind === "split") return 185;
+    if (f.kind === "shadow") return 285;
     if (settings.customColor) {
       const n = parseInt(settings.customColor.slice(1), 16);
       const r8 = (n >> 16) & 255, g8 = (n >> 8) & 255, b8 = n & 255;
@@ -627,29 +955,40 @@ html_code = '''<!DOCTYPE html>
     return f.cachedHue;
   }
 
-  // ---- firefly state ----
+  // ---- firefly state (normal, golden, split, mini, shadow) ----
   const fireflies = [];
   const MAX_FLY = 60;
   let caught = 0;
   let comboCount = 0;
   let comboTimer = null;
 
-  function makeFly() {
+  function makeFly(opts) {
+    const o = opts || {};
+    const kind = o.kind || "normal";
+    let r = 9 + Math.random() * 6;
+    let size = 4 + Math.random() * 5;
+    let blinkSpeed = 0.6 + Math.random() * 1.2;
+    if (kind === "golden") { r = 12; size = 9; blinkSpeed = 2.2; }
+    else if (kind === "split") { r = 11; size = 7; blinkSpeed = 1.6; }
+    else if (kind === "mini") { r = 7; size = 3.5; blinkSpeed = 2.0; }
+    else if (kind === "shadow") { r = 10; size = 6; blinkSpeed = 1.1; }
+
     return {
-      x: Math.random() * W,
-      y: Math.random() * H,
-      vx: (Math.random() - 0.5) * 18,
-      vy: (Math.random() - 0.5) * 18,
+      x: typeof o.x === "number" ? o.x : Math.random() * W,
+      y: typeof o.y === "number" ? o.y : Math.random() * H,
+      vx: typeof o.vx === "number" ? o.vx : (Math.random() - 0.5) * 20,
+      vy: typeof o.vy === "number" ? o.vy : (Math.random() - 0.5) * 20,
       phase: Math.random() * Math.PI * 2,
-      blinkSpeed: 0.6 + Math.random() * 1.2,
-      size: 4 + Math.random() * 5,
+      blinkSpeed,
+      size,
       hue: 45 + Math.random() * 30,
       hueIdx: Math.floor(Math.random() * 6),
       pulse: Math.random() * Math.PI * 2,
-      r: 9 + Math.random() * 6,
+      r,
       cachedHue: 45,
       colorV: -1,
-      golden: false,
+      kind,
+      golden: kind === "golden",
       bornAt: performance.now()
     };
   }
@@ -657,7 +996,11 @@ html_code = '''<!DOCTYPE html>
   function spawn(n) {
     for (let i = 0; i < n; i++) {
       if (fireflies.length >= MAX_FLY) break;
-      fireflies.push(makeFly());
+      const roll = Math.random();
+      let kind = "normal";
+      if (roll < 0.12) kind = "split";
+      else if (roll < 0.22) kind = "shadow";
+      fireflies.push(makeFly({ kind }));
     }
   }
 
@@ -670,11 +1013,13 @@ html_code = '''<!DOCTYPE html>
   }
 
   function wander(f, dt, t, m, magnetOn) {
-    const mm = f.golden ? Math.max(1.6, m) : m;
+    const isGold = f.kind === "golden";
+    const isShadow = f.kind === "shadow";
+    const mm = isGold ? Math.max(1.6, m) : m;
     f.vx += Math.sin(t * 0.0004 + f.phase) * 6 * dt * mm;
     f.vy += Math.cos(t * 0.0005 + f.phase * 1.7) * 6 * dt * mm;
 
-    if (magnetOn) {
+    if (magnetOn && !isShadow) {
       const cx = W / 2, cy = H / 2;
       const dx = cx - f.x, dy = cy - f.y;
       const dist = Math.sqrt(dx * dx + dy * dy) || 1;
@@ -691,7 +1036,7 @@ html_code = '''<!DOCTYPE html>
     if (f.y < margin) f.vy += 25 * dt;
     if (f.y > H - margin) f.vy -= 25 * dt;
     const sp = Math.hypot(f.vx, f.vy);
-    const maxSp = magnetOn ? 70 : 34 * mm * (f.golden ? 1.7 : 1);
+    const maxSp = (magnetOn && !isShadow) ? 70 : 34 * mm * (isGold ? 1.7 : 1);
     if (sp > maxSp) { f.vx *= maxSp / sp; f.vy *= maxSp / sp; }
   }
 
@@ -704,15 +1049,13 @@ html_code = '''<!DOCTYPE html>
     if (nextGoldChance <= 0) {
       nextGoldChance = 14000 + Math.random() * 14000;
       let hasGolden = false;
-      for (let i = 0; i < fireflies.length; i++) if (fireflies[i].golden) { hasGolden = true; break; }
+      for (let i = 0; i < fireflies.length; i++) if (fireflies[i].kind === "golden") { hasGolden = true; break; }
       if (!hasGolden && fireflies.length < MAX_FLY) {
-        const g = makeFly();
-        g.golden = true;
-        g.size = 8 + Math.random() * 3;
-        g.r = 12;
-        g.blinkSpeed = 2.2;
-        g.vx = (Math.random() - 0.5) * 40;
-        g.vy = (Math.random() - 0.5) * 40;
+        const g = makeFly({
+          kind: "golden",
+          vx: (Math.random() - 0.5) * 40,
+          vy: (Math.random() - 0.5) * 40
+        });
         fireflies.push(g);
         showToast("⭐ a GOLDEN firefly appeared! (worth 10 — quick!)");
         chime(1.5);
@@ -778,6 +1121,10 @@ html_code = '''<!DOCTYPE html>
     if (badgesAccum < 0.25) return;
     badgesAccum = 0;
     let html = "";
+    const tier = getJarTier();
+    if (tier.bonusRadius > 0) {
+      html += '<span class="badge jar">' + tier.icon + " +" + tier.bonusRadius + " reach</span>";
+    }
     for (let i = 0; i < PU_TYPES.length; i++) {
       const t = PU_TYPES[i];
       if (effects[t.id] > 0) {
@@ -916,9 +1263,12 @@ html_code = '''<!DOCTYPE html>
     }
   }
 
-  // ---- audio ----
+  // ---- audio + relaxing ambient music ----
   let actx = null;
+  let musicLoopId = null;
+  let musicStepIdx = 0;
   const SCALE = [0, 3, 5, 7, 10, 12, 15];
+  const AMBIENT_NOTES = [0, 5, 7, 10, 12, 7, 5, 3]; // F major / D minor pentatonic chill loop
   let lastNote = 3;
 
   function ensureAudio() {
@@ -928,7 +1278,49 @@ html_code = '''<!DOCTYPE html>
       actx = new AC();
     }
     if (actx.state === "suspended") actx.resume();
+    syncMusicLoop();
     return actx;
+  }
+
+  function playAmbientPadNote() {
+    if (!actx || !settings.musicOn || !settings.soundOn || paused) return;
+    if (actx.state === "suspended") return;
+    const now = actx.currentTime;
+    const semi = AMBIENT_NOTES[musicStepIdx % AMBIENT_NOTES.length];
+    musicStepIdx++;
+    const freq = 220 * Math.pow(2, semi / 12);
+
+    const osc = actx.createOscillator();
+    const filter = actx.createBiquadFilter();
+    const g = actx.createGain();
+
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(freq, now);
+
+    filter.type = "lowpass";
+    filter.frequency.setValueAtTime(620, now);
+
+    g.gain.setValueAtTime(0.0001, now);
+    g.gain.linearRampToValueAtTime(0.032, now + 0.9);
+    g.gain.exponentialRampToValueAtTime(0.0001, now + 3.4);
+
+    osc.connect(filter);
+    filter.connect(g);
+    g.connect(actx.destination);
+
+    osc.start(now);
+    osc.stop(now + 3.5);
+  }
+
+  function syncMusicLoop() {
+    if (musicLoopId !== null) {
+      clearInterval(musicLoopId);
+      musicLoopId = null;
+    }
+    if (settings.musicOn && settings.soundOn && actx) {
+      playAmbientPadNote();
+      musicLoopId = setInterval(playAmbientPadNote, 2400);
+    }
   }
 
   function chime(intensity) {
@@ -954,6 +1346,23 @@ html_code = '''<!DOCTYPE html>
       osc.start(now);
       osc.stop(now + 1.5);
     }
+  }
+
+  function shadowSound() {
+    if (!settings.soundOn) return;
+    const a = ensureAudio();
+    if (!a) return;
+    const now = a.currentTime;
+    const osc = a.createOscillator();
+    const g = a.createGain();
+    osc.type = "sawtooth";
+    osc.frequency.setValueAtTime(165, now);
+    osc.frequency.exponentialRampToValueAtTime(65, now + 0.35);
+    g.gain.setValueAtTime(0.05, now);
+    g.gain.exponentialRampToValueAtTime(0.0001, now + 0.38);
+    osc.connect(g);
+    g.connect(a.destination);
+    osc.start(now); osc.stop(now + 0.4);
   }
 
   function goldChime() {
@@ -1045,11 +1454,38 @@ html_code = '''<!DOCTYPE html>
   let m10 = false, m25 = false, m50 = false;
 
   function catchRadius() {
-    return effects.magnet > 0 ? 14 * 2.5 : 14;
+    const baseR = 14 + getJarTier().bonusRadius;
+    return effects.magnet > 0 ? baseR * 2.2 : baseR;
+  }
+
+  function spawnSplitMinis(x, y) {
+    const count = 3;
+    for (let k = 0; k < count; k++) {
+      if (fireflies.length >= MAX_FLY) break;
+      const ang = (Math.PI * 2 * k) / count + Math.random() * 0.4;
+      fireflies.push(makeFly({
+        kind: "mini",
+        x: Math.min(W - 30, Math.max(30, x + Math.cos(ang) * 14)),
+        y: Math.min(H - 30, Math.max(30, y + Math.sin(ang) * 14)),
+        vx: Math.cos(ang) * 48,
+        vy: Math.sin(ang) * 48
+      }));
+    }
   }
 
   function caughtFly(f) {
-    const wasGolden = f.golden;
+    const kind = f.kind;
+    if (kind === "shadow") {
+      comboCount = 0;
+      clearTimeout(comboTimer);
+      shadowSound();
+      showToast("👾 Shadow moth! Combo reset");
+      burst(f.x, f.y, 290);
+      syncPopulation();
+      return;
+    }
+
+    const wasGolden = kind === "golden";
     const base = wasGolden ? 10 : 1;
     const gained = effects.double > 0 ? base * 2 : base;
     caught += gained;
@@ -1060,6 +1496,9 @@ html_code = '''<!DOCTYPE html>
       updateBestUI();
       try { localStorage.setItem(HS_KEY, String(best)); } catch (e) {}
     }
+
+    const hue = flyHue(f);
+    checkJarProgress(hue);
 
     if (wasGolden) {
       goldChime();
@@ -1076,9 +1515,14 @@ html_code = '''<!DOCTYPE html>
           size: 2 + Math.random() * 3
         });
       }
+    } else if (kind === "split") {
+      chime(1.35);
+      burst(f.x, f.y, 185);
+      spawnSplitMinis(f.x, f.y);
+      showToast("💠 Split firefly! +3 mini fireflies spawned");
     } else {
       chime(1);
-      burst(f.x, f.y, flyHue(f));
+      burst(f.x, f.y, hue);
       comboCount++;
       clearTimeout(comboTimer);
       if (comboCount >= 5) {
@@ -1108,25 +1552,12 @@ html_code = '''<!DOCTYPE html>
     for (let i = fireflies.length - 1; i >= 0; i--) {
       const f = fireflies[i];
       const dx = f.x - x, dy = f.y - y;
-      const rr = (f.golden ? f.r + 4 : f.r) + cr;
+      const rr = (f.kind === "golden" ? f.r + 4 : f.r) + cr;
       if (dx * dx + dy * dy <= rr * rr) {
         fireflies.splice(i, 1);
         caughtFly(f);
         return;
       }
-    }
-    if (settings.soundOn && actx) {
-      const now = actx.currentTime;
-      const osc = actx.createOscillator();
-      const g = actx.createGain();
-      osc.type = "sine";
-      osc.frequency.setValueAtTime(180, now);
-      osc.frequency.exponentialRampToValueAtTime(90, now + 0.25);
-      g.gain.setValueAtTime(0.04, now);
-      g.gain.exponentialRampToValueAtTime(0.0001, now + 0.3);
-      osc.connect(g);
-      g.connect(actx.destination);
-      osc.start(now); osc.stop(now + 0.35);
     }
   }
 
@@ -1155,7 +1586,7 @@ html_code = '''<!DOCTYPE html>
       for (let i = fireflies.length - 1; i >= 0; i--) {
         const f = fireflies[i];
         const fx = f.x - px, fy = f.y - py;
-        const rr = (f.golden ? f.r + 4 : f.r) + cr;
+        const rr = (f.kind === "golden" ? f.r + 4 : f.r) + cr;
         if (fx * fx + fy * fy <= rr * rr) {
           fireflies.splice(i, 1);
           caughtFly(f);
@@ -1182,6 +1613,28 @@ html_code = '''<!DOCTYPE html>
     }
   }
 
+  // ---- reset current run ----
+  function resetCurrentRun() {
+    caught = 0;
+    comboCount = 0;
+    clearTimeout(comboTimer);
+    m10 = false; m25 = false; m50 = false;
+    prevJarLevel = 1;
+    jarOrbs.length = 0;
+    wave = 1;
+    waveElapsed = 0;
+    driftCountdown = DRIFT_BASE_INTERVAL;
+    pickups.length = 0;
+    effects.freeze = 0;
+    effects.magnet = 0;
+    effects.double = 0;
+    countEl.textContent = "0";
+    updateJarUI(false);
+    fireflies.length = 0;
+    spawn(settings.popTarget);
+    showToast("🔄 Current run reset — fresh garden!");
+  }
+
   // ---- difficulty waves + drift ----
   const DRIFT_BASE_INTERVAL = 10;
   let driftCountdown = DRIFT_BASE_INTERVAL;
@@ -1196,7 +1649,9 @@ html_code = '''<!DOCTYPE html>
   function driftAway() {
     if (!settings.driftOn) return;
     let normalCount = 0;
-    for (let i = 0; i < fireflies.length; i++) if (!fireflies[i].golden) normalCount++;
+    for (let i = 0; i < fireflies.length; i++) {
+      if (fireflies[i].kind !== "golden") normalCount++;
+    }
     const n = Math.min(driftAmount(), normalCount);
     if (n === 0) {
       showToast("the garden went quiet… releasing a few more 🕯️");
@@ -1206,7 +1661,7 @@ html_code = '''<!DOCTYPE html>
     let removed = 0;
     for (let i = fireflies.length - 1; i >= 0 && removed < n; i--) {
       const f = fireflies[i];
-      if (f.golden) continue;
+      if (f.kind === "golden") continue;
       fireflies.splice(i, 1);
       removed++;
       const hue = flyHue(f);
@@ -1334,6 +1789,8 @@ html_code = '''<!DOCTYPE html>
     } else if (k === "m") {
       settings.soundOn = !settings.soundOn;
       document.getElementById("soundSwitch").classList.toggle("on", settings.soundOn);
+      saveSettings();
+      syncMusicLoop();
       showToast(settings.soundOn ? "sound on 🔊" : "muted 🔇");
       if (settings.soundOn) chime(0.7);
     }
@@ -1352,7 +1809,7 @@ html_code = '''<!DOCTYPE html>
   THEME_KEYS.forEach(key => {
     const th = THEMES[key];
     const sw = document.createElement("div");
-    sw.className = "swatch" + (key === settings.theme ? " active" : "");
+    sw.className = "swatch" + (key === settings.theme && !settings.customColor ? " active" : "");
     sw.textContent = th.name;
     sw.title = th.name;
     if (key === "rainbow") {
@@ -1368,6 +1825,7 @@ html_code = '''<!DOCTYPE html>
       Object.values(swatchEls).forEach(el => el.classList.remove("active"));
       sw.classList.add("active");
       colorVersion++;
+      saveSettings();
       showToast(th.name + " fireflies ✨");
     });
     themeRow.appendChild(sw);
@@ -1378,6 +1836,7 @@ html_code = '''<!DOCTYPE html>
     settings.customColor = e.target.value;
     Object.values(swatchEls).forEach(el => el.classList.remove("active"));
     colorVersion++;
+    saveSettings();
   });
 
   const seasonRow = document.getElementById("seasonRow");
@@ -1391,6 +1850,7 @@ html_code = '''<!DOCTYPE html>
       Object.values(seasonEls).forEach(el => el.classList.remove("active"));
       btn.classList.add("active");
       buildSeasonBG();
+      saveSettings();
       showToast(SEASONS[key].name + " garden 🌍");
     });
     seasonRow.appendChild(btn);
@@ -1400,7 +1860,10 @@ html_code = '''<!DOCTYPE html>
   function bindSlider(id, valId, apply) {
     const el = document.getElementById(id);
     const val = document.getElementById(valId);
-    el.addEventListener("input", () => apply(parseFloat(el.value), val));
+    el.addEventListener("input", () => {
+      apply(parseFloat(el.value), val);
+      saveSettings();
+    });
   }
 
   bindSlider("speedSlider", "speedVal", (v, val) => {
@@ -1439,6 +1902,24 @@ html_code = '''<!DOCTYPE html>
     }
     resize();
     buildSeasonBG();
+    saveSettings();
+  });
+
+  document.getElementById("musicSwitch").addEventListener("click", function () {
+    settings.musicOn = !settings.musicOn;
+    this.classList.toggle("on", settings.musicOn);
+    if (settings.musicOn) ensureAudio();
+    syncMusicLoop();
+    saveSettings();
+    showToast(settings.musicOn ? "🎵 relaxing music on" : "🎵 music off");
+  });
+
+  document.getElementById("scenerySwitch").addEventListener("click", function () {
+    settings.sceneryOn = !settings.sceneryOn;
+    this.classList.toggle("on", settings.sceneryOn);
+    buildGardenScenery();
+    saveSettings();
+    showToast(settings.sceneryOn ? "🌿 garden silhouettes on" : "🌿 garden silhouettes off");
   });
 
   document.getElementById("driftSwitch").addEventListener("click", function () {
@@ -1450,6 +1931,7 @@ html_code = '''<!DOCTYPE html>
     } else {
       showToast("zen mode: no drift 🧘");
     }
+    saveSettings();
   });
 
   document.getElementById("puSwitch").addEventListener("click", function () {
@@ -1462,42 +1944,60 @@ html_code = '''<!DOCTYPE html>
     } else {
       showToast("power-ups on — watch for drops 🎁");
     }
+    saveSettings();
   });
 
   document.getElementById("soundSwitch").addEventListener("click", function () {
     settings.soundOn = !settings.soundOn;
     this.classList.toggle("on", settings.soundOn);
     if (settings.soundOn) { ensureAudio(); chime(0.7); }
+    syncMusicLoop();
+    saveSettings();
   });
+
+  document.getElementById("resetRunBtn").addEventListener("click", () => {
+    resetCurrentRun();
+  });
+
+  function syncSettingsUI() {
+    document.getElementById("speedSlider").value = settings.speedMult;
+    document.getElementById("sizeSlider").value = settings.sizeMult;
+    document.getElementById("glowSlider").value = settings.glowMult;
+    document.getElementById("popSlider").max = settings.lowPower ? 18 : 50;
+    document.getElementById("popSlider").value = settings.popTarget;
+    document.getElementById("speedVal").textContent = settings.speedMult.toFixed(1);
+    document.getElementById("sizeVal").textContent = settings.sizeMult.toFixed(1);
+    document.getElementById("glowVal").textContent = settings.glowMult.toFixed(1);
+    document.getElementById("popVal").textContent = String(settings.popTarget);
+    document.getElementById("customColor").value = settings.customColor || "#ffd166";
+    document.getElementById("driftSwitch").classList.toggle("on", settings.driftOn);
+    document.getElementById("puSwitch").classList.toggle("on", settings.powerUpsOn);
+    document.getElementById("soundSwitch").classList.toggle("on", settings.soundOn);
+    document.getElementById("musicSwitch").classList.toggle("on", settings.musicOn);
+    document.getElementById("scenerySwitch").classList.toggle("on", settings.sceneryOn);
+    document.getElementById("lowPowSwitch").classList.toggle("on", settings.lowPower);
+    Object.values(swatchEls).forEach(el => el.classList.remove("active"));
+    if (!settings.customColor && swatchEls[settings.theme]) {
+      swatchEls[settings.theme].classList.add("active");
+    }
+    Object.values(seasonEls).forEach(el => el.classList.remove("active"));
+    if (seasonEls[settings.season]) {
+      seasonEls[settings.season].classList.add("active");
+    }
+  }
 
   document.getElementById("resetBtn").addEventListener("click", () => {
     Object.assign(settings, DEFAULTS);
-    document.getElementById("speedSlider").value = 1;
-    document.getElementById("sizeSlider").value = 1;
-    document.getElementById("glowSlider").value = 1;
-    document.getElementById("popSlider").value = 20;
-    document.getElementById("speedVal").textContent = "1.0";
-    document.getElementById("sizeVal").textContent = "1.0";
-    document.getElementById("glowVal").textContent = "1.0";
-    document.getElementById("popVal").textContent = "20";
-    document.getElementById("customColor").value = "#ffd166";
-    document.getElementById("driftSwitch").classList.add("on");
-    document.getElementById("puSwitch").classList.add("on");
-    document.getElementById("soundSwitch").classList.add("on");
-    document.getElementById("lowPowSwitch").classList.remove("on");
-    document.getElementById("popSlider").max = 50;
-    settings.lowPower = false;
-    Object.values(swatchEls).forEach(el => el.classList.remove("active"));
-    swatchEls[DEFAULTS.theme].classList.add("active");
-    Object.values(seasonEls).forEach(el => el.classList.remove("active"));
-    seasonEls[DEFAULTS.season].classList.add("active");
     colorVersion++;
     SPARK_POOL = 350;
+    syncSettingsUI();
     resize();
     buildSeasonBG();
     pickups.length = 0;
     effects.freeze = 0; effects.magnet = 0; effects.double = 0;
     syncPopulation();
+    syncMusicLoop();
+    saveSettings();
     showToast("back to defaults ↺");
   });
 
@@ -1506,8 +2006,9 @@ html_code = '''<!DOCTYPE html>
     const cap = settings.lowPower ? 18 : MAX_FLY;
     settings.popTarget = Math.min(cap, settings.popTarget + 10);
     document.getElementById("popSlider").value = settings.popTarget;
-    document.getElementById("popVal").textContent = settings.popTarget;
+    document.getElementById("popVal").textContent = String(settings.popTarget);
     syncPopulation();
+    saveSettings();
     showToast("10 more fireflies released 🪄");
   });
 
@@ -1599,11 +2100,13 @@ html_code = '''<!DOCTYPE html>
     goldAlive = false;
     for (let i = fireflies.length - 1; i >= 0; i--) {
       const f = fireflies[i];
-      if (f.golden && t - f.bornAt > GOLD_LIFETIME) {
+      if (f.kind === "golden" && t - f.bornAt > GOLD_LIFETIME) {
         fireflies.splice(i, 1);
         showToast("⭐ the golden one escaped…");
         driftSound();
-      } else if (f.golden) goldAlive = true;
+      } else if (f.kind === "golden") {
+        goldAlive = true;
+      }
     }
     updateBadges(dt);
 
@@ -1639,13 +2142,15 @@ html_code = '''<!DOCTYPE html>
       f.pulse += dt;
 
       const hue = flyHue(f);
-      const sprite = getSprite(hue, f.golden);
+      const sprite = getSprite(hue, f.kind);
 
-      const blink = f.golden
+      const blink = f.kind === "golden"
         ? 0.85 + 0.15 * Math.sin(t * 0.012)
-        : 0.3 + 0.7 * Math.pow(0.5 + 0.5 * Math.sin(t * 0.001 * f.blinkSpeed + f.phase), 2);
+        : (f.kind === "shadow"
+          ? 0.78 + 0.18 * Math.sin(t * 0.006 + f.phase)
+          : 0.3 + 0.7 * Math.pow(0.5 + 0.5 * Math.sin(t * 0.001 * f.blinkSpeed + f.phase), 2));
 
-      const scale = f.golden ? 1.35 : 1;
+      const scale = f.kind === "golden" ? 1.35 : (f.kind === "mini" ? 0.68 : 1);
       const drawSize = SPRITE_BASE * 0.75 * sm * scale * (0.7 + 0.3 * blink);
       const half = drawSize / 2;
       ctx.globalAlpha = Math.min(1, blink * gm);
@@ -1684,9 +2189,15 @@ html_code = '''<!DOCTYPE html>
     }
     ctx.globalAlpha = 1;
 
+    drawGardenScenery(dt, t);
+    drawJarCorner(dt, t);
+
     scheduleNext();
   }
 
+  loadSettings();
+  syncSettingsUI();
+  updateJarUI(false);
   resize();
   requestAnimationFrame(frame);
   spawn(settings.popTarget);
@@ -1703,11 +2214,11 @@ if ("serviceWorker" in navigator) {
 </html>'''
 
 with open("index.html", "w", encoding="utf-8") as f:
-    f.write(html_code.strip() + "\n")
+    f.write(code.strip() + "\n")
 
 with open("index.html", "r", encoding="utf-8") as f:
-    first_line = f.readline().strip()
-    last_line = f.readlines()[-1].strip()
-print("First line:", first_line)
-print("Last line:", last_line)
+    lines = f.readlines()
+print("Total lines:", len(lines))
+print("First line:", lines[0].strip())
+print("Last line:", lines[-1].strip())
 
